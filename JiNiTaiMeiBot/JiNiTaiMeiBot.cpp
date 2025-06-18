@@ -495,13 +495,7 @@ bool waitTeam(HWND hWnd) {
             break;
         }
 
-        const auto ocrResult = captureGTA(hWnd, 0.2f, 0, 0.8f, 0.8f);
-        const auto hostCount = countText(ocrResult, L"主持");
-        std::cout << "Host count: " << hostCount << std::endl;
-
-        if(hostCount < 1) {
-            break;
-        }
+        const auto ocrResult = captureGTA(hWnd, 0.f, 0, 1.f, 1.f);
 
         const auto joiningCount = countText(ocrResult, L"正在");
         std::cout << "Joining count: " << joiningCount << std::endl;
