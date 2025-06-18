@@ -42,7 +42,7 @@ HANDLE startOCR(const std::string& executeFileName, const std::string& args) {
     sa.nLength = sizeof sa;
     sa.lpSecurityDescriptor = nullptr;
     sa.bInheritHandle = true;
-    if(!CreatePipe(&hRead, &hWrite, &sa, NULL)) {
+    if(!CreatePipe(&hRead, &hWrite, &sa, 0x1000)) {
         std::cout << "Can not create pipe" << std::endl;
         return nullptr;
     }
@@ -324,30 +324,35 @@ void goDownstairs() {
     // 走到柱子上卡住 - start
     pressKeyboard('A');
     pressKeyboard('W');
-    Sleep(1500);
+    Sleep(2000);
     releaseKeyBoard('W');
     releaseKeyBoard('A');
     // 走到柱子上卡住 - end
 
     // 走到楼梯口 - start
     pressKeyboard('D');
-    Sleep(10000);
+    Sleep(8000);
+    for(const auto startTime = GetTickCount64(); GetTickCount64() - startTime < 2500;) {
+        clickKeyboard('S', 150);
+    }
+    Sleep(1500);
     releaseKeyBoard('D');
+
     // 走到楼梯口 - end
 
     // 走进楼梯门 - start
     pressKeyboard('W');
-    Sleep(2000);
+    Sleep(3000);
     releaseKeyBoard('W');
     // 走进楼梯门 - end
-
+    
     // 走下楼梯 - start
     pressKeyboard('S');
-    Sleep(3000);
+    Sleep(4000);
     releaseKeyBoard('S');
 
     pressKeyboard('D');
-    Sleep(1000);
+    Sleep(2000);
     releaseKeyBoard('D');
 
     pressKeyboard('W');
@@ -378,7 +383,7 @@ bool foundJob(HWND hWnd) {
     // 走到任务附近 - start
     startTickCount = GetTickCount64();
 
-    while(GetTickCount64() - startTickCount < 6000) {
+    while(GetTickCount64() - startTickCount < 4000) {
         clickKeyboard('S', 360);
         clickKeyboard('A', 500);
     }
@@ -388,7 +393,7 @@ bool foundJob(HWND hWnd) {
     startTickCount = GetTickCount64();
     bool isJobFound = false;
     while(GetTickCount64() - startTickCount < 10000) {
-        clickKeyboard('S', 340);
+        clickKeyboard('S', 320);
         Sleep(1000);
         if((isJobFound = ocrFoundJob(hWnd))) {
             break;
@@ -490,7 +495,7 @@ bool waitTeam(HWND hWnd) {
             break;
         }
 
-        const auto ocrResult = captureGTA(hWnd, 0.25, 0, 0.75, 0.5);
+        const auto ocrResult = captureGTA(hWnd, 0.2f, 0, 0.8f, 0.8f);
         const auto hostCount = countText(ocrResult, L"主持");
         std::cout << "Host count: " << hostCount << std::endl;
 
@@ -575,13 +580,14 @@ int main() {
         int newMatchErrorCount = 0;
         while(!newMatch(hWnd)) {
             newMatchErrorCount++;
-            Sleep(1000);
-            if(newMatchErrorCount % 2 != 0) {
-                for(int i = 0; i < 6; ++i) {
+            if(newMatchErrorCount % 3 == 2) {
+                for(int i = 0; i < 7; ++i) {
                     clickKeyboard(VK_ESCAPE);
                     Sleep(500);
                 }
             }
+            Sleep(5000);
+            std::cout << "Retry new match" << std::endl;
         }
 
         while(!isRespawned(hWnd)) {
@@ -623,7 +629,7 @@ int main() {
         while(isOnJobPanel(hWnd)) {
             Sleep(1000);
         }
-        Sleep(5000);
+        Sleep(10000);
         std::cout << "Suspend GTA process" << std::endl;
         suspendProcess(gtaPid, 10 * 1000);
         std::cout << "Resume GTA process" << std::endl;
