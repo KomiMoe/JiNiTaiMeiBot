@@ -97,10 +97,11 @@ int CaptureAnImage(HWND hWnd, float x, float y, float z, float w) {
     const auto hdcScreen = GetDC(nullptr);
     const auto hdcWindow = GetDC(hWnd);
 
-
     // Get the client area for size calculation.
     RECT rcClient;
     GetClientRect(hWnd, &rcClient);
+    RECT rcWindow;
+    GetWindowRect(hWnd, &rcWindow);
 
     LONG startX = static_cast<LONG>(static_cast<float>(rcClient.right) * x);
     LONG startY = static_cast<LONG>(static_cast<float>(rcClient.bottom) * y);
@@ -125,8 +126,8 @@ int CaptureAnImage(HWND hWnd, float x, float y, float z, float w) {
                    rcClient.right,
                    rcClient.bottom,
                    hdcScreen,
-                   0,
-                   0,
+                   rcWindow.left + startX,
+                   rcWindow.top + startY,
                    GetSystemMetrics(SM_CXSCREEN),
                    GetSystemMetrics(SM_CYSCREEN),
                    SRCCOPY)) {
@@ -317,15 +318,14 @@ bool ocrFoundJob(HWND hWnd) {
 
 
 bool suspendProcess(DWORD pid, DWORD time) {
-
-    static DWORD(__stdcall* procZwSuspendProcess)(HANDLE hProc) = nullptr;
-    static DWORD(__stdcall* procZwResumeProcess)(HANDLE hProc) = nullptr;
+    static DWORD (__stdcall*procZwSuspendProcess)(HANDLE hProc) = nullptr;
+    static DWORD (__stdcall*procZwResumeProcess)(HANDLE hProc) = nullptr;
 
     if(!pid) {
         return false;
     }
     HANDLE hProc = OpenProcess(PROCESS_SUSPEND_RESUME, FALSE, pid);
-    if (!hProc) {
+    if(!hProc) {
         std::cout << "Can not open GTA process" << std::endl;
         return false;
     }
@@ -356,7 +356,7 @@ bool suspendProcess(DWORD pid, DWORD time) {
             }
         }
     }
-    
+
     procZwSuspendProcess(hProc);
     Sleep(time);
     procZwResumeProcess(hProc);
@@ -501,13 +501,13 @@ long countText(const std::vector<wchar_t>& searchText, LPCWSTR text) {
 bool waitTeam(HWND hWnd) {
     constexpr auto exitMatchTime = 5 * 60 * 1000;
     constexpr auto waitTime = 10 * 1000;
-    const auto startWaitTeamTickCount = GetTickCount64();
+    const auto     startWaitTeamTickCount = GetTickCount64();
 
     bool result = false;
 
     LONGLONG lastActiveTime = 0;
-    long lastJoiningCount = 0;
-    long lastJoinedCount = 0;
+    long     lastJoiningCount = 0;
+    long     lastJoinedCount = 0;
     while(true) {
         Sleep(1000);
         const auto currentCheckTime = GetTickCount64();
@@ -551,11 +551,9 @@ bool waitTeam(HWND hWnd) {
             result = true;
             break;
         }
-
     }
     return result;
 }
-
 
 
 int main() {
@@ -570,7 +568,7 @@ int main() {
 
     DWORD gtaPid = 0;
     GetWindowThreadProcessId(hWnd, &gtaPid);
-    if (!gtaPid) {
+    if(!gtaPid) {
         std::cout << "Can not lookup GTA process id" << std::endl;
         system("pause");
         return 0;
@@ -582,8 +580,11 @@ int main() {
         Sleep(1000);
     }
 
-    while(true) {
+    Sleep(1000);
+    captureGTA(hWnd);
+    Sleep(100000);
 
+    while(true) {
         Sleep(1000);
 
         while(!newMatch(hWnd)) {
