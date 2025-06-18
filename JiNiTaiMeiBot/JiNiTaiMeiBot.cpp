@@ -2,6 +2,7 @@
 #include <filesystem>
 
 #include <Windows.h>
+#include <atlimage.h>
 
 #include <json/json.h>
 
@@ -81,160 +82,35 @@ std::string readPipeAndClose(HANDLE hRead) {
     return result;
 }
 
-// Code from Microsoft
 int CaptureAnImage(HWND hWnd, float x, float y, float z, float w) {
-    HBITMAP hbmScreen = nullptr;
-    BITMAP  bmpScreen;
-    DWORD   dwBytesWritten = 0;
-    DWORD   dwSizeofDIB = 0;
-    HANDLE  hFile = nullptr;
-    char*   lpBitmap = nullptr;
-    HANDLE  hDIB = nullptr;
-    DWORD   dwBmpSize = 0;
+    const auto hdcDesktop = GetDC(nullptr);
+    if(!hdcDesktop) {
+        std::cout << "Can not get desktop HDC" << std::endl;
+        return -1;
+    }
 
-    // Retrieve the handle to a display device context for the client 
-    // area of the window. 
-    const auto hdcScreen = GetDC(nullptr);
-    const auto hdcWindow = GetDC(hWnd);
-
-    // Get the client area for size calculation.
     RECT rcClient;
     GetClientRect(hWnd, &rcClient);
     RECT rcWindow;
     GetWindowRect(hWnd, &rcWindow);
 
-    LONG startX = static_cast<LONG>(static_cast<float>(rcClient.right) * x);
-    LONG startY = static_cast<LONG>(static_cast<float>(rcClient.bottom) * y);
-    LONG endX = static_cast<LONG>(static_cast<float>(rcClient.right) * z);
-    LONG endY = static_cast<LONG>(static_cast<float>(rcClient.bottom) * w);
+    const auto startX = rcWindow.left + (x * rcClient.right);
+    const auto startY = rcWindow.top + (y * rcClient.bottom);
+    const auto width = rcClient.right * z;
+    const auto height = rcClient.bottom * w;
 
-    // Create a compatible DC, which is used in a BitBlt from the window DC.
-    const auto hdcMemDC = CreateCompatibleDC(hdcWindow);
-
-    if(!hdcMemDC) {
-        MessageBox(hWnd, L"CreateCompatibleDC has failed", L"Failed", MB_OK);
-        goto done;
+    CImage image;
+    if(!image.Create(width, height, GetDeviceCaps(hdcDesktop, BITSPIXEL))) {
+        std::cout << "Can not create image" << std::endl;
+        return -1;
     }
-
-    // This is the best stretch mode.
-    SetStretchBltMode(hdcWindow, HALFTONE);
-
-    // The source DC is the entire screen, and the destination DC is the current window (HWND).
-    if(!StretchBlt(hdcWindow,
-                   0,
-                   0,
-                   rcClient.right,
-                   rcClient.bottom,
-                   hdcScreen,
-                   rcWindow.left + startX,
-                   rcWindow.top + startY,
-                   GetSystemMetrics(SM_CXSCREEN),
-                   GetSystemMetrics(SM_CYSCREEN),
-                   SRCCOPY)) {
-        MessageBox(hWnd, L"StretchBlt has failed", L"Failed", MB_OK);
-        goto done;
+    StretchBlt(image.GetDC(), 0, 0, image.GetWidth(), image.GetHeight(), hdcDesktop, startX, startY, width, height, SRCCOPY);
+    if(!SUCCEEDED(image.Save(L"temp.png", Gdiplus::ImageFormatPNG))) {
+        std::cout << "Can not save image" << std::endl;
+        return -1;
     }
-
-    // Create a compatible bitmap from the Window DC.
-    hbmScreen = CreateCompatibleBitmap(hdcWindow, endX - startX, endY - startY);
-
-    if(!hbmScreen) {
-        MessageBox(hWnd, L"CreateCompatibleBitmap Failed", L"Failed", MB_OK);
-        goto done;
-    }
-
-    // Select the compatible bitmap into the compatible memory DC.
-    SelectObject(hdcMemDC, hbmScreen);
-
-    // Bit block transfer into our compatible memory DC.
-    if(!BitBlt(hdcMemDC,
-               0,
-               0,
-               endX - startX,
-               endY - startY,
-               hdcWindow,
-               startX,
-               startY,
-               SRCCOPY)) {
-        MessageBox(hWnd, L"BitBlt has failed", L"Failed", MB_OK);
-        goto done;
-    }
-
-    // Get the BITMAP from the HBITMAP.
-    GetObject(hbmScreen, sizeof(BITMAP), &bmpScreen);
-
-    BITMAPFILEHEADER bmfHeader;
-    BITMAPINFOHEADER bi;
-
-    bi.biSize = sizeof(BITMAPINFOHEADER);
-    bi.biWidth = bmpScreen.bmWidth;
-    bi.biHeight = bmpScreen.bmHeight;
-    bi.biPlanes = 1;
-    bi.biBitCount = 32;
-    bi.biCompression = BI_RGB;
-    bi.biSizeImage = 0;
-    bi.biXPelsPerMeter = 0;
-    bi.biYPelsPerMeter = 0;
-    bi.biClrUsed = 0;
-    bi.biClrImportant = 0;
-
-    dwBmpSize = ((bmpScreen.bmWidth * bi.biBitCount + 31) / 32) * 4 * bmpScreen.bmHeight;
-
-    // Starting with 32-bit Windows, GlobalAlloc and LocalAlloc are implemented as wrapper functions that 
-    // call HeapAlloc using a handle to the process's default heap. Therefore, GlobalAlloc and LocalAlloc 
-    // have greater overhead than HeapAlloc.
-    hDIB = GlobalAlloc(GHND, dwBmpSize);
-    lpBitmap = (char*)GlobalLock(hDIB);
-
-    // Gets the "bits" from the bitmap, and copies them into a buffer 
-    // that's pointed to by lpbitmap.
-    GetDIBits(hdcWindow,
-              hbmScreen,
-              0,
-              (UINT)bmpScreen.bmHeight,
-              lpBitmap,
-              (BITMAPINFO*)&bi,
-              DIB_RGB_COLORS);
-
-    // A file is created, this is where we will save the screen capture.
-    hFile = CreateFile(L"captureqwsx.bmp",
-                       GENERIC_WRITE,
-                       0,
-                       NULL,
-                       CREATE_ALWAYS,
-                       FILE_ATTRIBUTE_NORMAL,
-                       NULL);
-
-    // Add the size of the headers to the size of the bitmap to get the total file size.
-    dwSizeofDIB = dwBmpSize + sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-
-    // Offset to where the actual bitmap bits start.
-    bmfHeader.bfOffBits = (DWORD)sizeof(BITMAPFILEHEADER) + (DWORD)sizeof(BITMAPINFOHEADER);
-
-    // Size of the file.
-    bmfHeader.bfSize = dwSizeofDIB;
-
-    // bfType must always be BM for Bitmaps.
-    bmfHeader.bfType = 0x4D42; // BM.
-
-    WriteFile(hFile, (LPSTR)&bmfHeader, sizeof(BITMAPFILEHEADER), &dwBytesWritten, NULL);
-    WriteFile(hFile, (LPSTR)&bi, sizeof(BITMAPINFOHEADER), &dwBytesWritten, NULL);
-    WriteFile(hFile, (LPSTR)lpBitmap, dwBmpSize, &dwBytesWritten, NULL);
-
-    // Unlock and Free the DIB from the heap.
-    GlobalUnlock(hDIB);
-    GlobalFree(hDIB);
-
-    // Close the handle for the file that was created.
-    CloseHandle(hFile);
-
-    // Clean up.
-done:
-    DeleteObject(hbmScreen);
-    DeleteObject(hdcMemDC);
-    ReleaseDC(NULL, hdcScreen);
-    ReleaseDC(hWnd, hdcWindow);
-
+    image.ReleaseDC();
+    ReleaseDC(WindowFromDC(hdcDesktop), hdcDesktop);
     return 0;
 }
 
@@ -255,13 +131,16 @@ static bool rectAaBb(const Vector2i& rect1, const Vector2i& rect2) {
 static std::vector<wchar_t> captureGTA(HWND hWnd, float x = 0, float y = 0, float z = 0.5f, float w = 0.5f) {
     std::vector<wchar_t> resultWideChar;
 
-    CaptureAnImage(hWnd, x, y, z, w);
+    if(CaptureAnImage(hWnd, x, y, z, w)) {
+        std::cout << "Error in OCR -1." << std::endl;
+        return resultWideChar;
+    }
     auto hRead = startOCR("RapidOCR-json.exe",
                           "--models=\".\\models\" "
                           "--det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx "
                           "--rec=rec_ch_PP-OCRv4_infer.onnx  --keys=dict_chinese.txt --padding=60 "
                           "--maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 "
-                          "--mostAngle=0 --numThread=1 --image_path=captureqwsx.bmp");
+                          "--mostAngle=0 --numThread=1 --image_path=temp.png");
     auto ocrResult = readPipeAndClose(hRead);
     // std::cout<< ocrResult << std::endl;
     const auto completedPos = ocrResult.find("completed.");
@@ -579,10 +458,6 @@ int main() {
         std::cout << focus << std::endl;
         Sleep(1000);
     }
-
-    Sleep(1000);
-    captureGTA(hWnd);
-    Sleep(100000);
 
     while(true) {
         Sleep(1000);
