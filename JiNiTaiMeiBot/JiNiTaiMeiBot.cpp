@@ -19,7 +19,7 @@ bool releaseKeyBoard(byte key) {
     // return SendInput(1, &input, sizeof(input));
 }
 
-bool clickKeyboard(byte key, unsigned long milliSecond = 60) {
+bool clickKeyboard(byte key, unsigned long milliSecond = 90) {
     // auto flag = 
     pressKeyboard(key);
     // if (!flag) {
@@ -126,6 +126,83 @@ static bool rectAaBb(const Vector2i& rect1, const Vector2i& rect2) {
             rect1.x + rect1.z > rect2.x &&
             rect1.y < rect2.y + rect2.w &&
             rect1.w + rect1.y > rect2.y;
+}
+
+struct EnumWindowArg {
+    LPCWSTR windowName = nullptr;
+    LPCWSTR sendMsg = nullptr;
+    bool    isClassName = false;
+};
+
+BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg) {
+    if(!customMsg || !hWnd) {
+        return false;
+    }
+    const auto args = reinterpret_cast<EnumWindowArg*>(customMsg);
+    if(!args->windowName || !args->sendMsg) {
+        return false;
+    }
+    EnumChildWindows(hWnd, sendTextEnumWindowCallback, customMsg);
+    const auto pBuffer = new wchar_t[0x1000]{};
+    if(!pBuffer) {
+        return false;
+    }
+    if(!args->isClassName) {
+        if(!GetWindowTextW(hWnd, pBuffer, 0x1000)) {
+            return true;
+        }
+    } else {
+        if(!GetClassNameW(hWnd, pBuffer, 0x1000)) {
+            return true;
+        }
+    }
+
+    if(wcsstr(pBuffer, args->windowName)) {
+        std::cout << "Steam chat wnd: " << hWnd << std::endl;
+
+        ShowWindow(hWnd, SW_NORMAL);
+        SetForegroundWindow(hWnd);
+
+        const auto msgLength = wcslen(args->sendMsg);
+        const int  bufferLength = (static_cast<int>(msgLength) + 2) * 2;
+        const auto hMemHandle = GlobalAlloc(GMEM_FIXED | GMEM_ZEROINIT, bufferLength);
+        const auto pMemData = static_cast<char*>(GlobalLock(hMemHandle));
+        WideCharToMultiByte(CP_OEMCP, 0, args->sendMsg, -1, pMemData, bufferLength, nullptr, nullptr);
+        GlobalUnlock(hMemHandle);
+
+        OpenClipboard(nullptr);
+        EmptyClipboard();
+        SetClipboardData(CF_TEXT, hMemHandle);
+
+        CloseClipboard();
+
+        Sleep(500);
+        pressKeyboard(VK_LCONTROL);
+        pressKeyboard('V');
+        Sleep(80);
+        releaseKeyBoard('V');
+        releaseKeyBoard(VK_LCONTROL);
+        Sleep(500);
+        clickKeyboard(VK_RETURN);
+        Sleep(500);
+        return false;
+    }
+
+    return true;
+}
+
+void postMessageToSteamChat(LPCWSTR msg) {
+    const auto oldFocus = GetForegroundWindow();
+
+    constexpr auto steamChatWindowName = L"蠢人";
+    EnumWindowArg  enumArg{};
+    enumArg.sendMsg = msg;
+    enumArg.windowName = steamChatWindowName;
+    EnumWindows(sendTextEnumWindowCallback, reinterpret_cast<LPARAM>(&enumArg));
+
+
+    ShowWindow(oldFocus, SW_NORMAL);
+    SetForegroundWindow(oldFocus);
 }
 
 static std::vector<wchar_t> captureGTA(HWND hWnd, float x = 0, float y = 0, float z = 0.5f, float w = 0.5f) {
@@ -302,7 +379,7 @@ bool foundJob(HWND hWnd) {
     startTickCount = GetTickCount64();
 
     while(GetTickCount64() - startTickCount < 6000) {
-        clickKeyboard('S', 350);
+        clickKeyboard('S', 360);
         clickKeyboard('A', 500);
     }
     // 走到任务附近 - end
@@ -311,7 +388,7 @@ bool foundJob(HWND hWnd) {
     startTickCount = GetTickCount64();
     bool isJobFound = false;
     while(GetTickCount64() - startTickCount < 10000) {
-        clickKeyboard('S', 350);
+        clickKeyboard('S', 340);
         Sleep(1000);
         if((isJobFound = ocrFoundJob(hWnd))) {
             break;
@@ -328,7 +405,7 @@ bool foundJob(HWND hWnd) {
 
 bool newMatch(HWND hWnd) {
     clickKeyboard(VK_ESCAPE);
-    Sleep(500);
+    Sleep(2000);
 
     auto ocrResult = captureGTA(hWnd);
     if(!findText(hWnd, L"地图", 0, 0, 0.5f, 0.5f)) {
@@ -337,25 +414,28 @@ bool newMatch(HWND hWnd) {
     }
 
     clickKeyboard('E');
-    Sleep(500);
+    Sleep(2000);
     clickKeyboard(VK_RETURN);
-    Sleep(200);
+    Sleep(1000);
     for(int i = 0; i < 5; ++i) {
-        clickKeyboard('W');
-        Sleep(200);
+        clickKeyboard('W', 100);
+        Sleep(600);
     }
     clickKeyboard(VK_RETURN);
-    Sleep(500);
+    Sleep(1000);
 
     if(!findText(hWnd, L"邀请", 0, 0, 0.5f, 0.5f)) {
-        clickKeyboard(VK_ESCAPE);
+        for(int i = 0; i < 3; ++i) {
+            clickKeyboard(VK_ESCAPE);
+            Sleep(1000);
+        }
         return false;
     }
 
     clickKeyboard('S');
-    Sleep(200);
+    Sleep(600);
     clickKeyboard(VK_RETURN);
-    Sleep(300);
+    Sleep(2000);
     clickKeyboard(VK_RETURN);
     return true;
 }
@@ -377,16 +457,22 @@ long countText(const std::vector<wchar_t>& searchText, LPCWSTR text) {
     return count;
 }
 
+constexpr auto chatMsgFormatBufferSize = 100;
+
 bool waitTeam(HWND hWnd) {
     constexpr auto exitMatchTime = 5 * 60 * 1000;
-    constexpr auto waitTime = 10 * 1000;
+    constexpr auto joiningWaitTime = 2 * 60 * 1000;
+    constexpr auto waitTime = 15 * 1000;
     const auto     startWaitTeamTickCount = GetTickCount64();
 
     bool result = false;
 
     LONGLONG lastActiveTime = 0;
+    LONGLONG lastJoiningTime = 0;
     long     lastJoiningCount = 0;
     long     lastJoinedCount = 0;
+    long     lastActivePlayerCount = 1;
+    postMessageToSteamChat(L"新德瑞差事已启动，卡好CEO直接来");
     while(true) {
         Sleep(1000);
         const auto currentCheckTime = GetTickCount64();
@@ -394,7 +480,13 @@ bool waitTeam(HWND hWnd) {
             break;
         }
 
-        if(GetTickCount64() - startWaitTeamTickCount > exitMatchTime) {
+        if(GetTickCount64() - startWaitTeamTickCount > exitMatchTime && !lastJoinedCount) {
+            postMessageToSteamChat(L"启动任务超时，重新启动中");
+            break;
+        }
+
+        if(GetTickCount64() - lastJoiningTime > joiningWaitTime && lastJoiningCount) {
+            postMessageToSteamChat(L"任务中含有卡B，重新启动中");
             break;
         }
 
@@ -412,21 +504,39 @@ bool waitTeam(HWND hWnd) {
         std::cout << "Joined count: " << joinedCount << std::endl;
 
         if(joiningCount != lastJoiningCount || joinedCount != lastJoinedCount) {
+            if(joiningCount != lastJoiningCount) {
+                lastJoiningTime = GetTickCount64();
+            }
+
             lastJoiningCount = joiningCount;
             lastJoinedCount = joinedCount;
-
             lastActiveTime = currentCheckTime;
+
+            const auto numActivePlayer = joinedCount + joiningCount + 1;
+            if(lastActivePlayerCount != numActivePlayer) {
+                lastActivePlayerCount = numActivePlayer;
+                const auto chatMsg = new wchar_t[chatMsgFormatBufferSize]{};
+                if(numActivePlayer < 4) {
+                    swprintf_s(chatMsg, chatMsgFormatBufferSize, L"德瑞 %d=%d，卡好CEO直接来", numActivePlayer, 4 - numActivePlayer);
+                } else {
+                    swprintf_s(chatMsg, chatMsgFormatBufferSize, L"满了");
+                }
+                postMessageToSteamChat(chatMsg);
+                delete[] chatMsg;
+            }
+
+
             continue;
         }
 
         if(joinedCount == 3 || (currentCheckTime - lastActiveTime > waitTime && joinedCount > 0 && !joiningCount)) {
             clickKeyboard(VK_RETURN);
-            Sleep(1000);
             if(!isOnJobPanel(hWnd)) {
                 clickKeyboard(VK_RETURN);
                 Sleep(1000);
                 continue;
             }
+            postMessageToSteamChat(L"开了，请等待下一辆车");
             result = true;
             break;
         }
@@ -462,8 +572,16 @@ int main() {
     while(true) {
         Sleep(1000);
 
+        int newMatchErrorCount = 0;
         while(!newMatch(hWnd)) {
+            newMatchErrorCount++;
             Sleep(1000);
+            if(newMatchErrorCount % 2 != 0) {
+                for(int i = 0; i < 6; ++i) {
+                    clickKeyboard(VK_ESCAPE);
+                    Sleep(500);
+                }
+            }
         }
 
         while(!isRespawned(hWnd)) {
@@ -485,19 +603,19 @@ int main() {
         }
 
         clickKeyboard('W');
-        Sleep(200);
+        Sleep(800);
         clickKeyboard(VK_RETURN);
-        Sleep(500);
+        Sleep(2000);
         clickKeyboard('A');
-        Sleep(200);
+        Sleep(800);
         clickKeyboard('W');
 
         const auto waitTeamResult = waitTeam(hWnd);
         if(!waitTeamResult) {
             clickKeyboard(VK_ESCAPE);
-            Sleep(500);
+            Sleep(1000);
             clickKeyboard(VK_ESCAPE);
-            Sleep(500);
+            Sleep(1000);
             clickKeyboard(VK_RETURN);
             continue;
         }
@@ -506,6 +624,8 @@ int main() {
             Sleep(1000);
         }
         Sleep(5000);
+        std::cout << "Suspend GTA process" << std::endl;
         suspendProcess(gtaPid, 10 * 1000);
+        std::cout << "Resume GTA process" << std::endl;
     }
 }
