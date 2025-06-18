@@ -94,10 +94,10 @@ int CaptureAnImage(HWND hWnd, float x, float y, float z, float w) {
     RECT rcWindow;
     GetWindowRect(hWnd, &rcWindow);
 
-    const auto startX = rcWindow.left + (x * rcClient.right);
-    const auto startY = rcWindow.top + (y * rcClient.bottom);
-    const auto width = rcClient.right * z;
-    const auto height = rcClient.bottom * w;
+    const int startX = static_cast<int>(rcWindow.left + (x * rcClient.right));
+    const int startY = static_cast<int>(rcWindow.top + (y * rcClient.bottom));
+    const int width = static_cast<int>(rcClient.right * z);
+    const int height = static_cast<int>(rcClient.bottom * w);
 
     CImage image;
     if(!image.Create(width, height, GetDeviceCaps(hdcDesktop, BITSPIXEL))) {
