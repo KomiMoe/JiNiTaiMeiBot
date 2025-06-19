@@ -412,7 +412,7 @@ bool foundJob(HWND hWnd) {
     startTickCount = GetTickCount64();
     bool isJobFound = false;
     while(GetTickCount64() - startTickCount < 10000) {
-        clickKeyboard('S', 320);
+        clickKeyboard('S', 330);
         Sleep(1000);
         if((isJobFound = ocrFoundJob(hWnd))) {
             break;
