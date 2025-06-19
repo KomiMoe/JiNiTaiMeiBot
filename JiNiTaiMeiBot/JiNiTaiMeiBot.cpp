@@ -134,6 +134,23 @@ struct EnumWindowArg {
     bool    isClassName = false;
 };
 
+bool switchFocus(HWND hWnd) {
+    // AttachThreadInput(GetWindowThreadProcessId(GetForegroundWindow(), nullptr), GetCurrentThreadId(), TRUE);
+    // SetForegroundWindow(hWnd);
+    // SetFocus(hWnd);
+    // AttachThreadInput(GetWindowThreadProcessId(GetForegroundWindow(), nullptr), GetCurrentThreadId(), FALSE);
+    // return GetForegroundWindow() == hWnd;
+    pressKeyboard(VK_LMENU);
+    Sleep(100);
+    pressKeyboard(VK_TAB);
+    Sleep(200);
+    releaseKeyBoard(VK_TAB);
+    Sleep(50);
+    releaseKeyBoard(VK_LMENU);
+    Sleep(500);
+    return true;
+}
+
 BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg) {
     if(!customMsg || !hWnd) {
         return false;
@@ -160,19 +177,23 @@ BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg) {
     if(wcsstr(pBuffer, args->windowName)) {
         std::cout << "Steam chat wnd: " << hWnd << std::endl;
 
-        ShowWindow(hWnd, SW_NORMAL);
-        SetForegroundWindow(hWnd);
+        if(!switchFocus(hWnd)) {
+            return false;
+        }
+
+        // Sleep(1000);
 
         const auto msgLength = wcslen(args->sendMsg);
-        const int  bufferLength = (static_cast<int>(msgLength) + 2) * 2;
-        const auto hMemHandle = GlobalAlloc(GMEM_FIXED | GMEM_ZEROINIT, bufferLength);
-        const auto pMemData = static_cast<char*>(GlobalLock(hMemHandle));
-        WideCharToMultiByte(CP_OEMCP, 0, args->sendMsg, -1, pMemData, bufferLength, nullptr, nullptr);
+        const int  bufferSize = (static_cast<int>(msgLength) + 2) * 2;
+        const auto hMemHandle = GlobalAlloc(GMEM_FIXED | GMEM_ZEROINIT, bufferSize);
+        const auto pMemData = static_cast<wchar_t*>(GlobalLock(hMemHandle));
+        wcscpy_s(pMemData, bufferSize, args->sendMsg);
+
         GlobalUnlock(hMemHandle);
 
         OpenClipboard(nullptr);
         EmptyClipboard();
-        SetClipboardData(CF_TEXT, hMemHandle);
+        SetClipboardData(CF_UNICODETEXT, hMemHandle);
 
         CloseClipboard();
 
@@ -200,9 +221,7 @@ void postMessageToSteamChat(LPCWSTR msg) {
     enumArg.windowName = steamChatWindowName;
     EnumWindows(sendTextEnumWindowCallback, reinterpret_cast<LPARAM>(&enumArg));
 
-
-    ShowWindow(oldFocus, SW_NORMAL);
-    SetForegroundWindow(oldFocus);
+    switchFocus(oldFocus);
 }
 
 static std::vector<wchar_t> captureGTA(HWND hWnd, float x = 0, float y = 0, float z = 0.5f, float w = 0.5f) {
@@ -345,7 +364,7 @@ void goDownstairs() {
     Sleep(3000);
     releaseKeyBoard('W');
     // 走进楼梯门 - end
-    
+
     // 走下楼梯 - start
     pressKeyboard('S');
     Sleep(4000);
@@ -495,7 +514,7 @@ bool waitTeam(HWND hWnd) {
             break;
         }
 
-        const auto ocrResult = captureGTA(hWnd, 0.f, 0, 1.f, 1.f);
+        const auto ocrResult = captureGTA(hWnd, .5f, 0.f, 1.f, 1.f);
 
         const auto joiningCount = countText(ocrResult, L"正在");
         std::cout << "Joining count: " << joiningCount << std::endl;
@@ -523,7 +542,6 @@ bool waitTeam(HWND hWnd) {
                 postMessageToSteamChat(chatMsg);
                 delete[] chatMsg;
             }
-
 
             continue;
         }
@@ -609,6 +627,7 @@ int main() {
         clickKeyboard('A');
         Sleep(800);
         clickKeyboard('W');
+        Sleep(500);
 
         const auto waitTeamResult = waitTeam(hWnd);
         if(!waitTeamResult) {
