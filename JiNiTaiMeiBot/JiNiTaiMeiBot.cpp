@@ -644,9 +644,9 @@ int main() {
         while(isOnJobPanel(hWnd)) {
             Sleep(1000);
         }
-        Sleep(10000);
+        Sleep(12000);
         std::cout << "Suspend GTA process" << std::endl;
-        suspendProcess(gtaPid, 10 * 1000);
+        suspendProcess(gtaPid, 15 * 1000);
         std::cout << "Resume GTA process" << std::endl;
     }
 }
