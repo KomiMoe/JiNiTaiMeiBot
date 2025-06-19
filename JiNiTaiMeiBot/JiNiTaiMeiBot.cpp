@@ -409,15 +409,16 @@ bool foundJob(HWND hWnd) {
     // 走到任务附近 - end
 
     // OCR 走到黄圈 - start
+    clickKeyboard('S', 360);
     startTickCount = GetTickCount64();
     bool isJobFound = false;
     while(GetTickCount64() - startTickCount < 10000) {
-        clickKeyboard('S', 330);
+        clickKeyboard('S', 340);
         Sleep(1000);
         if((isJobFound = ocrFoundJob(hWnd))) {
             break;
         }
-        clickKeyboard('A', 490);
+        clickKeyboard('A', 480);
         Sleep(1000);
         if((isJobFound = ocrFoundJob(hWnd))) {
             break;
@@ -548,6 +549,7 @@ bool waitTeam(HWND hWnd) {
 
         if(joinedCount == 3 || (currentCheckTime - lastActiveTime > waitTime && joinedCount > 0 && !joiningCount)) {
             clickKeyboard(VK_RETURN);
+            Sleep(1000);
             if(!isOnJobPanel(hWnd)) {
                 clickKeyboard(VK_RETURN);
                 Sleep(1000);
