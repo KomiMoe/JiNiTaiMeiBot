@@ -417,7 +417,7 @@ bool foundJob(HWND hWnd) {
         if((isJobFound = ocrFoundJob(hWnd))) {
             break;
         }
-        clickKeyboard('A', 500);
+        clickKeyboard('A', 490);
         Sleep(1000);
         if((isJobFound = ocrFoundJob(hWnd))) {
             break;
