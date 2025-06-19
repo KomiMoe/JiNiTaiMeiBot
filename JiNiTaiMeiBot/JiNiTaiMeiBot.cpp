@@ -386,8 +386,8 @@ bool foundJob(HWND hWnd) {
 
     // 走出门 - start
     while(GetTickCount64() - startTickCount < 3500) {
-        clickKeyboard('S', 500);
-        clickKeyboard('A', 500);
+        clickKeyboard('S', 400);
+        clickKeyboard('A', 400);
     }
     // 走出门 - end
 
@@ -412,7 +412,7 @@ bool foundJob(HWND hWnd) {
     clickKeyboard('S', 360);
     startTickCount = GetTickCount64();
     bool isJobFound = false;
-    while(GetTickCount64() - startTickCount < 10000) {
+    while(GetTickCount64() - startTickCount < 15000) {
         clickKeyboard('S', 340);
         Sleep(1000);
         if((isJobFound = ocrFoundJob(hWnd))) {
