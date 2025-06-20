@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Config.h"
 #include "Logger.h"
@@ -14,7 +14,7 @@ extern Config*    GConfig;
 extern Logger*    GLogger;
 extern OCREngine* GOCREngine;
 
-extern HWND GGtaHWnd;
+extern HWND  GGtaHWnd;
 extern DWORD GGtaPid;
 
 bool pressKeyboard(byte key);

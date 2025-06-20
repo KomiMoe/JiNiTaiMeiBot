@@ -1,4 +1,4 @@
-﻿#include "Logger.h"
+#include "Logger.h"
 
 #include "Global.h"
 #include "conmanip.h"
@@ -10,9 +10,9 @@ Logger* GLogger;
 using namespace conmanip;
 
 conmanip::console_out_context* ctxOut = nullptr;
-conmanip::console_out* conOut = nullptr;
-conmanip::console_in_context* ctxIn = nullptr;
-conmanip::console_in* conIn = nullptr;
+conmanip::console_out*         conOut = nullptr;
+conmanip::console_in_context*  ctxIn  = nullptr;
+conmanip::console_in*          conIn  = nullptr;
 
 void Logger::PtEndLine() const
 {
@@ -25,7 +25,7 @@ void Logger::PtEndLine() const
 Logger::Logger()
 {
     EndLineStr = L"";
-    conOut = new conmanip::console_out(*(ctxOut = new conmanip::console_out_context()));
+    conOut     = new conmanip::console_out(*(ctxOut = new conmanip::console_out_context()));
     conOut->settitle(L"");
     Info(L"Logger started up");
     conIn = new conmanip::console_in(*(ctxIn = new conmanip::console_in_context));
@@ -99,12 +99,11 @@ void Logger::BufRaw() const
 
 std::vector<std::wstring> Logger::RdCommand() const
 {
-    const auto line = RdRaw();
+    const auto                line = RdRaw();
     std::vector<std::wstring> result;
-    std::wstringstream wss(line);
-    std::wstring tempItem;
-    while (std::getline(wss, tempItem, L' '))
-    {
+    std::wstringstream        wss(line);
+    std::wstring              tempItem;
+    while (std::getline(wss, tempItem, L' ')) {
         result.emplace_back(tempItem);
     }
     return result;

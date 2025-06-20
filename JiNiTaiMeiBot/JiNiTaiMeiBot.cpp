@@ -1,4 +1,4 @@
-﻿#include <iostream>
+#include <iostream>
 #include <filesystem>
 
 #include <Windows.h>
@@ -11,15 +11,17 @@
 #include "OCREngine.h"
 
 HWND  GGtaHWnd = nullptr;
-DWORD GGtaPid = NULL;
+DWORD GGtaPid  = NULL;
 
-struct EnumWindowArg {
-    LPCWSTR windowName = nullptr;
-    LPCWSTR sendMsg = nullptr;
+struct EnumWindowArg
+{
+    LPCWSTR windowName  = nullptr;
+    LPCWSTR sendMsg     = nullptr;
     bool    isClassName = false;
 };
 
-bool switchFocus(HWND hWnd) {
+bool switchFocus(HWND hWnd)
+{
     // const auto oldWnd = GetForegroundWindow();
     // AttachThreadInput(GetWindowThreadProcessId(oldWnd, nullptr), GetCurrentThreadId(), TRUE);
     // SwitchToThisWindow(hWnd, false);
@@ -40,12 +42,13 @@ bool switchFocus(HWND hWnd) {
     return true;
 }
 
-BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg) {
-    if(!customMsg || !hWnd) {
+BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg)
+{
+    if (!customMsg || !hWnd) {
         return false;
     }
     const auto args = reinterpret_cast<EnumWindowArg*>(customMsg);
-    if(!args->windowName || !args->sendMsg) {
+    if (!args->windowName || !args->sendMsg) {
         return false;
     }
     EnumChildWindows(hWnd, sendTextEnumWindowCallback, customMsg);
@@ -53,23 +56,23 @@ BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg) {
     buffer.resize(0x1000);
     memset(buffer.data(), 0, buffer.size() * sizeof(wchar_t));
 
-    if(!args->isClassName) {
-        if(!GetWindowTextW(hWnd, buffer.data(), 0x1000)) {
+    if (!args->isClassName) {
+        if (!GetWindowTextW(hWnd, buffer.data(), 0x1000)) {
             return true;
         }
     } else {
-        if(!GetClassNameW(hWnd, buffer.data(), 0x1000)) {
+        if (!GetClassNameW(hWnd, buffer.data(), 0x1000)) {
             return true;
         }
     }
 
-    if(wcsstr(buffer.data(), args->windowName)) {
-        if(GConfig->debug) {
+    if (wcsstr(buffer.data(), args->windowName)) {
+        if (GConfig->debug) {
             swprintf_s(GLogger->Buffer, L"Steam char window handle: %p", hWnd);
             GLogger->Debug(GLogger->Buffer);
         }
 
-        if(!switchFocus(hWnd)) {
+        if (!switchFocus(hWnd)) {
             return false;
         }
         //Sleep(300);
@@ -79,18 +82,18 @@ BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg) {
         const auto targetX = rcClient.right / 2;
         const auto targetY = rcClient.bottom - 20;
 
-        POINT pt = {targetX, targetY};
+        POINT pt = { targetX, targetY };
         ClientToScreen(hWnd, &pt);
         SetCursorPos(pt.x, pt.y);
 
-        INPUT input = {0};
-        input.type = INPUT_MOUSE;
+        INPUT input      = { 0 };
+        input.type       = INPUT_MOUSE;
         input.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
         SendInput(1, &input, sizeof(INPUT));
 
         Sleep(100);
         ZeroMemory(&input, sizeof(INPUT));
-        input.type = INPUT_MOUSE;
+        input.type       = INPUT_MOUSE;
         input.mi.dwFlags = MOUSEEVENTF_LEFTUP;
         SendInput(1, &input, sizeof(INPUT));
 
@@ -111,69 +114,75 @@ BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg) {
     return true;
 }
 
-void postMessageToSteamChat(LPCWSTR msg) {
+void postMessageToSteamChat(LPCWSTR msg)
+{
     const auto oldFocus = GetForegroundWindow();
 
     constexpr auto steamChatWindowName = L"蠢人";
     EnumWindowArg  enumArg{};
-    enumArg.sendMsg = msg;
+    enumArg.sendMsg    = msg;
     enumArg.windowName = steamChatWindowName;
     EnumWindows(sendTextEnumWindowCallback, reinterpret_cast<LPARAM>(&enumArg));
 
     switchFocus(oldFocus);
 }
 
-bool findText(HWND hWnd, LPCWSTR text, float x, float y, float z, float w) {
+bool findText(HWND hWnd, LPCWSTR text, float x, float y, float z, float w)
+{
     const auto ocrResult = GOCREngine->ocrUTF(hWnd, x, y, z, w);
     return ocrResult.size() > 1 && wcsstr(ocrResult.data(), text);
 }
 
-bool isRespawned(HWND hWnd) {
+bool isRespawned(HWND hWnd)
+{
     return findText(hWnd, L"床", 0, 0, 0.5f, 0.5f);
 }
 
-bool isOnJobPanel(HWND hWnd) {
+bool isOnJobPanel(HWND hWnd)
+{
     return findText(hWnd, L"别惹德瑞", 0, 0, 0.5f, 0.5f);
 }
 
-bool ocrFoundJob(HWND hWnd) {
+bool ocrFoundJob(HWND hWnd)
+{
     return findText(hWnd, L"猎杀", 0, 0, 0.5f, 0.5f);
 }
 
 
-bool suspendProcess(DWORD pid, DWORD time) {
+bool suspendProcess(DWORD pid, DWORD time)
+{
     static DWORD (__stdcall*procZwSuspendProcess)(HANDLE hProc) = nullptr;
-    static DWORD (__stdcall*procZwResumeProcess)(HANDLE hProc) = nullptr;
+    static DWORD (__stdcall*procZwResumeProcess)(HANDLE hProc)  = nullptr;
 
-    if(!pid) {
+    if (!pid) {
         return false;
     }
     HANDLE hProc = OpenProcess(PROCESS_SUSPEND_RESUME, FALSE, pid);
-    if(!hProc) {
+    if (!hProc) {
         GLogger->Err(L"Can not open GTA process");
         return false;
     }
 
-    if(!procZwSuspendProcess || !procZwResumeProcess) {
+    if (!procZwSuspendProcess || !procZwResumeProcess) {
         const auto hNtdll = LoadLibraryW(L"ntdll.dll");
-        if(!hNtdll) {
+        if (!hNtdll) {
             GLogger->Err(L"Can not found NTDLL");
             CloseHandle(hProc);
             return false;
         }
 
-        if(!procZwSuspendProcess) {
+        if (!procZwSuspendProcess) {
             reinterpret_cast<FARPROC&>(procZwSuspendProcess) = GetProcAddress(hNtdll, "ZwSuspendProcess");
-            if(!procZwSuspendProcess) {
+            if (!procZwSuspendProcess) {
                 GLogger->Err(L"Can not found ZwSuspendProcess");
                 CloseHandle(hProc);
                 return false;
             }
         }
 
-        if(!procZwResumeProcess) {
+        if (!procZwResumeProcess) {
             reinterpret_cast<FARPROC&>(procZwResumeProcess) = GetProcAddress(hNtdll, "ZwResumeProcess");
-            if(!procZwResumeProcess) {
+            if (!procZwResumeProcess) {
                 GLogger->Err(L"Can not found ZwResumeProcess");
                 CloseHandle(hProc);
                 return false;
@@ -188,7 +197,8 @@ bool suspendProcess(DWORD pid, DWORD time) {
     return true;
 }
 
-void goDownstairs() {
+void goDownstairs()
+{
     // 走到柱子上卡住 - start
     pressKeyboard('A');
     pressKeyboard('W');
@@ -200,7 +210,7 @@ void goDownstairs() {
     // 走到楼梯口 - start
     pressKeyboard('D');
     Sleep(8000);
-    for(const auto startTime = GetTickCount64(); GetTickCount64() - startTime < 2500;) {
+    for (const auto startTime = GetTickCount64(); GetTickCount64() - startTime < 2500;) {
         clickKeyboard('S', 150);
     }
     Sleep(1500);
@@ -230,11 +240,12 @@ void goDownstairs() {
 }
 
 
-bool foundJob(HWND hWnd) {
+bool foundJob(HWND hWnd)
+{
     auto startTickCount = GetTickCount64();
 
     // 走出门 - start
-    while(GetTickCount64() - startTickCount < GConfig->goOutStairsTime) {
+    while (GetTickCount64() - startTickCount < GConfig->goOutStairsTime) {
         clickKeyboard('S', GConfig->pressSTimeStairs);
         clickKeyboard('A', GConfig->pressATimeStairs);
     }
@@ -251,7 +262,7 @@ bool foundJob(HWND hWnd) {
     // 走到任务附近 - start
     startTickCount = GetTickCount64();
 
-    while(GetTickCount64() - startTickCount < GConfig->crossAisleTime) {
+    while (GetTickCount64() - startTickCount < GConfig->crossAisleTime) {
         clickKeyboard('S', GConfig->pressSTimeAisle);
         clickKeyboard('A', GConfig->pressATimeAisle);
     }
@@ -259,17 +270,17 @@ bool foundJob(HWND hWnd) {
 
     // OCR 走到黄圈 - start
     clickKeyboard('S', GConfig->pressSTimeGoJob);
-    startTickCount = GetTickCount64();
+    startTickCount  = GetTickCount64();
     bool isJobFound = false;
-    while(GetTickCount64() - startTickCount < GConfig->waitFindJobTimeout) {
+    while (GetTickCount64() - startTickCount < GConfig->waitFindJobTimeout) {
         clickKeyboard('S', GConfig->pressSTimeGoJob);
         Sleep(300);
-        if((isJobFound = ocrFoundJob(hWnd))) {
+        if ((isJobFound = ocrFoundJob(hWnd))) {
             break;
         }
         clickKeyboard('A', GConfig->pressATimeGoJob);
         Sleep(300);
-        if((isJobFound = ocrFoundJob(hWnd))) {
+        if ((isJobFound = ocrFoundJob(hWnd))) {
             break;
         }
     }
@@ -277,11 +288,12 @@ bool foundJob(HWND hWnd) {
     return isJobFound;
 }
 
-bool newMatch(HWND hWnd) {
+bool newMatch(HWND hWnd)
+{
     clickKeyboard(VK_ESCAPE);
     Sleep(2000);
 
-    if(!findText(hWnd, L"地图", 0, 0, 0.5f, 0.5f)) {
+    if (!findText(hWnd, L"地图", 0, 0, 0.5f, 0.5f)) {
         clickKeyboard(VK_ESCAPE);
         return false;
     }
@@ -290,15 +302,15 @@ bool newMatch(HWND hWnd) {
     Sleep(2000);
     clickKeyboard(VK_RETURN);
     Sleep(1000);
-    for(int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 5; ++i) {
         clickKeyboard('W', 100);
         Sleep(600);
     }
     clickKeyboard(VK_RETURN);
     Sleep(1000);
 
-    if(!findText(hWnd, L"邀请", 0, 0, 0.5f, 0.5f)) {
-        for(int i = 0; i < 3; ++i) {
+    if (!findText(hWnd, L"邀请", 0, 0, 0.5f, 0.5f)) {
+        for (int i = 0; i < 3; ++i) {
             clickKeyboard(VK_ESCAPE);
             Sleep(1000);
         }
@@ -313,16 +325,17 @@ bool newMatch(HWND hWnd) {
     return true;
 }
 
-long countText(const std::vector<wchar_t>& searchText, LPCWSTR text) {
+long countText(const std::vector<wchar_t>& searchText, LPCWSTR text)
+{
     long count = 0;
 
-    if(searchText.size() <= 1) {
+    if (searchText.size() <= 1) {
         return count;
     }
 
     auto searchPoint = searchText.data();
 
-    while((searchPoint = wcsstr(searchPoint, text))) {
+    while ((searchPoint = wcsstr(searchPoint, text))) {
         searchPoint++;
         count++;
     }
@@ -332,30 +345,31 @@ long countText(const std::vector<wchar_t>& searchText, LPCWSTR text) {
 
 constexpr auto chatMsgFormatBufferSize = 100;
 
-bool waitTeam(HWND hWnd) {
+bool waitTeam(HWND hWnd)
+{
     const auto startWaitTeamTickCount = GetTickCount64();
 
     bool result = false;
 
-    LONGLONG lastActiveTime = 0;
-    LONGLONG lastJoiningTime = 0;
-    long     lastJoiningCount = 0;
-    long     lastJoinedCount = 0;
+    LONGLONG lastActiveTime        = 0;
+    LONGLONG lastJoiningTime       = 0;
+    long     lastJoiningCount      = 0;
+    long     lastJoinedCount       = 0;
     long     lastActivePlayerCount = 1;
     postMessageToSteamChat(L"德瑞差事已启动，卡好CEO直接来");
-    while(true) {
+    while (true) {
         Sleep(GConfig->checkLoopTime * 1000);
         const auto currentCheckTime = GetTickCount64();
-        if(!isOnJobPanel(hWnd)) {
+        if (!isOnJobPanel(hWnd)) {
             break;
         }
 
-        if(GetTickCount64() - startWaitTeamTickCount > GConfig->matchPanelTimeout * 1000 && !lastJoinedCount) {
+        if (GetTickCount64() - startWaitTeamTickCount > GConfig->matchPanelTimeout * 1000 && !lastJoinedCount) {
             postMessageToSteamChat(L"启动任务超时，重新启动中");
             break;
         }
 
-        if(GetTickCount64() - lastJoiningTime > GConfig->joiningPlayerKick * 1000 && lastJoiningCount) {
+        if (GetTickCount64() - lastJoiningTime > GConfig->joiningPlayerKick * 1000 && lastJoiningCount) {
             postMessageToSteamChat(L"任务中含有卡B，重新启动中");
             break;
         }
@@ -369,19 +383,19 @@ bool waitTeam(HWND hWnd) {
         swprintf_s(GLogger->Buffer, L"Joined count: %d", joinedCount);
         GLogger->Info(GLogger->Buffer);
 
-        if(joiningCount != lastJoiningCount || joinedCount != lastJoinedCount) {
-            if(joiningCount != lastJoiningCount) {
+        if (joiningCount != lastJoiningCount || joinedCount != lastJoinedCount) {
+            if (joiningCount != lastJoiningCount) {
                 lastJoiningTime = GetTickCount64();
             }
 
             lastJoiningCount = joiningCount;
-            lastJoinedCount = joinedCount;
-            lastActiveTime = currentCheckTime;
+            lastJoinedCount  = joinedCount;
+            lastActiveTime   = currentCheckTime;
 
             const auto numActivePlayer = joinedCount + joiningCount + 1;
-            if(lastActivePlayerCount != numActivePlayer) {
+            if (lastActivePlayerCount != numActivePlayer) {
                 lastActivePlayerCount = numActivePlayer;
-                if(numActivePlayer >= 4) {
+                if (numActivePlayer >= 4) {
                     postMessageToSteamChat(L"满了");
                 }
             }
@@ -389,10 +403,10 @@ bool waitTeam(HWND hWnd) {
             continue;
         }
 
-        if((joinedCount == 3 && GConfig->startOnAllJoined) || (currentCheckTime - lastActiveTime > GConfig->startMatchDelay * 1000 && joinedCount > 0 && !joiningCount)) {
+        if ((joinedCount == 3 && GConfig->startOnAllJoined) || (currentCheckTime - lastActiveTime > GConfig->startMatchDelay * 1000 && joinedCount > 0 && !joiningCount)) {
             clickKeyboard(VK_RETURN);
             Sleep(1000);
-            if(!isOnJobPanel(hWnd)) {
+            if (!isOnJobPanel(hWnd)) {
                 clickKeyboard(VK_RETURN);
                 Sleep(1000);
                 continue;
@@ -406,7 +420,8 @@ bool waitTeam(HWND hWnd) {
 }
 
 
-int main(int argc, const char** argv) {
+int main(int argc, const char** argv)
+{
     SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
 
     const auto hStdIn = GetStdHandle(STD_INPUT_HANDLE);
@@ -421,7 +436,7 @@ int main(int argc, const char** argv) {
 
     std::string configFileName = "config.json";
 
-    if(argc > 1) {
+    if (argc > 1) {
         configFileName = argv[1];
     }
 
@@ -430,7 +445,7 @@ int main(int argc, const char** argv) {
 
     try {
         GConfig = new Config(configFileName);
-    } catch(const std::runtime_error& err) {
+    } catch (const std::runtime_error& err) {
         swprintf_s(GLogger->Buffer, L"Exception on read config:  %hs ...", err.what());
         GLogger->Err(GLogger->Buffer);
         return 0;
@@ -440,42 +455,42 @@ int main(int argc, const char** argv) {
 
     try {
         GOCREngine = new OCREngine();
-    } catch(const std::runtime_error& err) {
+    } catch (const std::runtime_error& err) {
         swprintf_s(GLogger->Buffer, L"Exception on start ocr engine:  %hs ...", err.what());
         GLogger->Err(GLogger->Buffer);
         return 0;
     }
 
     GGtaHWnd = FindWindowW(nullptr, L"Grand Theft Auto V");
-    if(!GGtaHWnd) {
+    if (!GGtaHWnd) {
         GLogger->Err(L"Can not found GTA window");
         system("pause");
         return 0;
     }
 
     GetWindowThreadProcessId(GGtaHWnd, &GGtaPid);
-    if(!GGtaPid) {
+    if (!GGtaPid) {
         GLogger->Err(L"Can not lookup GTA process id");
         system("pause");
         return 0;
     }
 
     HWND focus;
-    while((focus = GetForegroundWindow()) != GGtaHWnd) {
+    while ((focus = GetForegroundWindow()) != GGtaHWnd) {
         swprintf_s(GLogger->Buffer, L"Waiting for switch to GTA window. Current window: %p", focus);
         GLogger->Info(GLogger->Buffer);
         Sleep(1000);
     }
 
-    while(true) {
+    while (true) {
         Sleep(1000);
 
         int newMatchErrorCount = 0;
-        while(!newMatch(GGtaHWnd)) {
+        while (!newMatch(GGtaHWnd)) {
             newMatchErrorCount++;
-            if(newMatchErrorCount % 3 == 2) {
+            if (newMatchErrorCount % 3 == 2) {
                 GLogger->Warn(L"Try to back to normal status");
-                for(int i = 0; i < 7; ++i) {
+                for (int i = 0; i < 7; ++i) {
                     clickKeyboard(VK_ESCAPE);
                     Sleep(500);
                 }
@@ -484,7 +499,7 @@ int main(int argc, const char** argv) {
             GLogger->Warn(L"Retry start a new match");
         }
 
-        while(!isRespawned(GGtaHWnd)) {
+        while (!isRespawned(GGtaHWnd)) {
             Sleep(300);
         }
 
@@ -494,12 +509,12 @@ int main(int argc, const char** argv) {
         swprintf_s(GLogger->Buffer, L"Find job result: %x", isJobFound);
         GLogger->Info(GLogger->Buffer);
 
-        if(!isJobFound) {
+        if (!isJobFound) {
             continue;
         }
 
         clickKeyboard('E');
-        while(!isOnJobPanel(GGtaHWnd)) {
+        while (!isOnJobPanel(GGtaHWnd)) {
             Sleep(1000);
         }
 
@@ -513,7 +528,7 @@ int main(int argc, const char** argv) {
         Sleep(500);
 
         const auto waitTeamResult = waitTeam(GGtaHWnd);
-        if(!waitTeamResult) {
+        if (!waitTeamResult) {
             clickKeyboard(VK_ESCAPE);
             Sleep(1000);
             clickKeyboard(VK_ESCAPE);
@@ -523,29 +538,29 @@ int main(int argc, const char** argv) {
         }
         const auto matchStartTime = GetTickCount();
 
-        while(isOnJobPanel(GGtaHWnd) && GetTickCount() - matchStartTime < static_cast<unsigned int>(GConfig->exitMatchTimeout) * 1000) {
+        while (isOnJobPanel(GGtaHWnd) && GetTickCount() - matchStartTime < static_cast<unsigned int>(GConfig->exitMatchTimeout) * 1000) {
             Sleep(1000);
         }
 
-        if(GConfig->suspendAfterMatchStarted) {
-            while(GetTickCount() - matchStartTime < static_cast<unsigned int>(GConfig->exitMatchTimeout) * 1000) {
+        if (GConfig->suspendAfterMatchStarted) {
+            while (GetTickCount() - matchStartTime < static_cast<unsigned int>(GConfig->exitMatchTimeout) * 1000) {
                 clickKeyboard('Z');
                 Sleep(1000);
                 const auto ocrResult = GOCREngine->ocrUTF(GGtaHWnd, 0, 0, .5f, 1.f);
 
-                if(wcsstr(ocrResult.data(), L"德瑞") ||
+                if (wcsstr(ocrResult.data(), L"德瑞") ||
                     wcsstr(ocrResult.data(), L"前往") ||
                     wcsstr(ocrResult.data(), L"困难") ||
                     wcsstr(ocrResult.data(), L"简单") ||
                     wcsstr(ocrResult.data(), L"普通") ||
                     wcsstr(ocrResult.data(), L"在线")
-                    ) {
+                ) {
                     break;
                 }
             }
         }
 
-        if(GetTickCount() - matchStartTime < static_cast<unsigned int>(GConfig->exitMatchTimeout) * 1000) {
+        if (GetTickCount() - matchStartTime < static_cast<unsigned int>(GConfig->exitMatchTimeout) * 1000) {
             Sleep(GConfig->delaySuspendTime * 1000);
             GLogger->Info(L"Suspend GTA process");
             suspendProcess(GGtaPid, GConfig->suspendGTATime * 1000);

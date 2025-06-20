@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <iostream>
 #include <vector>
@@ -28,6 +28,6 @@ public:
 
 public:
     std::vector<std::wstring> RdCommand() const;
-    std::wstring RdRaw() const;
+    std::wstring              RdRaw() const;
 
 };
