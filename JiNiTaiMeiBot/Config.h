@@ -10,7 +10,7 @@ public:
     int ocrTimeout = 3;
     std::string ocrArgs = "--models=\".\\models\" "
             "--det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx "
-            "--rec=rec_ch_PP-OCRv4_infer.onnx  --keys=dict_chinese.txt --padding=60 "
+            "--rec=rec_ch_PP-OCRv4_infer.onnx  --keys=dict_chinese.txt --padding=70 "
             "--maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 "
             "--mostAngle=0 --numThread=1";
 

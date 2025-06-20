@@ -534,6 +534,7 @@ int main(int argc, const char** argv) {
                 const auto ocrResult = GOCREngine->ocrUTF(GGtaHWnd, 0, 0, .5f, 1.f);
 
                 if(wcsstr(ocrResult.data(), L"德瑞") ||
+                    wcsstr(ocrResult.data(), L"前往") ||
                     wcsstr(ocrResult.data(), L"困难") ||
                     wcsstr(ocrResult.data(), L"简单") ||
                     wcsstr(ocrResult.data(), L"普通") ||
