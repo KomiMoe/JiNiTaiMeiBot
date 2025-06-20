@@ -88,7 +88,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Config.cpp" />
+    <ClCompile Include="Global.cpp" />
     <ClCompile Include="JiNiTaiMeiBot.cpp" />
+    <ClCompile Include="Logger.cpp" />
+    <ClCompile Include="OCREngine.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Config.h" />
+    <ClInclude Include="conmanip.h" />
+    <ClInclude Include="Global.h" />
+    <ClInclude Include="Logger.h" />
+    <ClInclude Include="OCREngine.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

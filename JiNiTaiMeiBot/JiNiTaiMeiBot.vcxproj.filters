@@ -10,5 +10,34 @@
     <ClCompile Include="JiNiTaiMeiBot.cpp">
       <Filter>source files</Filter>
     </ClCompile>
+    <ClCompile Include="OCREngine.cpp">
+      <Filter>source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Config.cpp">
+      <Filter>source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Logger.cpp">
+      <Filter>source files</Filter>
+    </ClCompile>
+    <ClCompile Include="Global.cpp">
+      <Filter>source files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Config.h">
+      <Filter>source files</Filter>
+    </ClInclude>
+    <ClInclude Include="Global.h">
+      <Filter>source files</Filter>
+    </ClInclude>
+    <ClInclude Include="OCREngine.h">
+      <Filter>source files</Filter>
+    </ClInclude>
+    <ClInclude Include="Logger.h">
+      <Filter>source files</Filter>
+    </ClInclude>
+    <ClInclude Include="conmanip.h">
+      <Filter>source files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
