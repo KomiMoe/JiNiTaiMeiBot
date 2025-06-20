@@ -17,6 +17,7 @@
 	"pressSTimeStairs" : 400,
 	"startMatchDelay" : 15,
 	"startOnAllJoined" : true,
+	"suspendAfterMatchStarted" : true,
 	"suspendGTATime" : 15,
 	"waitFindJobTimeout" : 15000
 }

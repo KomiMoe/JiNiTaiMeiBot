@@ -20,11 +20,14 @@ struct EnumWindowArg {
 };
 
 bool switchFocus(HWND hWnd) {
-    AttachThreadInput(GetWindowThreadProcessId(GetForegroundWindow(), nullptr), GetCurrentThreadId(), TRUE);
+    const auto oldWnd = GetForegroundWindow();
+    AttachThreadInput(GetWindowThreadProcessId(oldWnd, nullptr), GetCurrentThreadId(), TRUE);
     SwitchToThisWindow(hWnd, false);
+    ShowWindow(hWnd, SW_SHOW);
     SetFocus(hWnd);
     SetForegroundWindow(hWnd);
     AttachThreadInput(GetWindowThreadProcessId(GetForegroundWindow(), nullptr), GetCurrentThreadId(), FALSE);
+    AttachThreadInput(GetWindowThreadProcessId(oldWnd, nullptr), GetCurrentThreadId(), FALSE);
     return GetForegroundWindow() == hWnd;
     // pressKeyboard(VK_LMENU);
     // Sleep(100);
@@ -118,6 +121,7 @@ void postMessageToSteamChat(LPCWSTR msg) {
     EnumWindows(sendTextEnumWindowCallback, reinterpret_cast<LPARAM>(&enumArg));
 
     switchFocus(oldFocus);
+    Sleep(300);
 }
 
 bool findText(HWND hWnd, LPCWSTR text, float x, float y, float z, float w) {
