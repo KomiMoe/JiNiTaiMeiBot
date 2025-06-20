@@ -20,23 +20,23 @@ struct EnumWindowArg {
 };
 
 bool switchFocus(HWND hWnd) {
-    const auto oldWnd = GetForegroundWindow();
-    AttachThreadInput(GetWindowThreadProcessId(oldWnd, nullptr), GetCurrentThreadId(), TRUE);
-    SwitchToThisWindow(hWnd, false);
-    ShowWindow(hWnd, SW_SHOW);
-    SetFocus(hWnd);
-    SetForegroundWindow(hWnd);
-    AttachThreadInput(GetWindowThreadProcessId(GetForegroundWindow(), nullptr), GetCurrentThreadId(), FALSE);
-    AttachThreadInput(GetWindowThreadProcessId(oldWnd, nullptr), GetCurrentThreadId(), FALSE);
-    return GetForegroundWindow() == hWnd;
-    // pressKeyboard(VK_LMENU);
-    // Sleep(100);
-    // pressKeyboard(VK_TAB);
-    // Sleep(200);
-    // releaseKeyBoard(VK_TAB);
-    // Sleep(50);
-    // releaseKeyBoard(VK_LMENU);
-    // Sleep(500);
+    // const auto oldWnd = GetForegroundWindow();
+    // AttachThreadInput(GetWindowThreadProcessId(oldWnd, nullptr), GetCurrentThreadId(), TRUE);
+    // SwitchToThisWindow(hWnd, false);
+    // ShowWindow(hWnd, SW_SHOW);
+    // SetFocus(hWnd);
+    // SetForegroundWindow(hWnd);
+    // AttachThreadInput(GetWindowThreadProcessId(GetForegroundWindow(), nullptr), GetCurrentThreadId(), FALSE);
+    // AttachThreadInput(GetWindowThreadProcessId(oldWnd, nullptr), GetCurrentThreadId(), FALSE);
+    // return GetForegroundWindow() == hWnd;
+    pressKeyboard(VK_LMENU);
+    Sleep(100);
+    pressKeyboard(VK_TAB);
+    Sleep(200);
+    releaseKeyBoard(VK_TAB);
+    Sleep(50);
+    releaseKeyBoard(VK_LMENU);
+    Sleep(500);
     return true;
 }
 
@@ -72,7 +72,7 @@ BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg) {
         if(!switchFocus(hWnd)) {
             return false;
         }
-        Sleep(300);
+        //Sleep(300);
 
         RECT rcClient;
         GetClientRect(hWnd, &rcClient);
@@ -121,7 +121,6 @@ void postMessageToSteamChat(LPCWSTR msg) {
     EnumWindows(sendTextEnumWindowCallback, reinterpret_cast<LPARAM>(&enumArg));
 
     switchFocus(oldFocus);
-    Sleep(300);
 }
 
 bool findText(HWND hWnd, LPCWSTR text, float x, float y, float z, float w) {
@@ -343,7 +342,7 @@ bool waitTeam(HWND hWnd) {
     long     lastJoiningCount = 0;
     long     lastJoinedCount = 0;
     long     lastActivePlayerCount = 1;
-    postMessageToSteamChat(L"新德瑞差事已启动，卡好CEO直接来");
+    postMessageToSteamChat(L"德瑞差事已启动，卡好CEO直接来");
     while(true) {
         Sleep(GConfig->checkLoopTime * 1000);
         const auto currentCheckTime = GetTickCount64();
@@ -382,14 +381,9 @@ bool waitTeam(HWND hWnd) {
             const auto numActivePlayer = joinedCount + joiningCount + 1;
             if(lastActivePlayerCount != numActivePlayer) {
                 lastActivePlayerCount = numActivePlayer;
-                const auto chatMsg = new wchar_t[chatMsgFormatBufferSize]{};
-                if(numActivePlayer < 4) {
-                    swprintf_s(chatMsg, chatMsgFormatBufferSize, L"德瑞 %d=%d，卡好CEO直接来", numActivePlayer, 4 - numActivePlayer);
-                } else {
-                    swprintf_s(chatMsg, chatMsgFormatBufferSize, L"满了");
+                if(numActivePlayer >= 4) {
+                    postMessageToSteamChat(L"满了");
                 }
-                postMessageToSteamChat(chatMsg);
-                delete[] chatMsg;
             }
 
             continue;
