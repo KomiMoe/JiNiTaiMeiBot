@@ -24,6 +24,8 @@ struct EnumWindowArg
     bool    isClassName = false;
 };
 
+void tryToJoinBot();
+
 bool switchFocus(HWND hWnd)
 {
     // const auto oldWnd = GetForegroundWindow();
@@ -302,10 +304,14 @@ bool foundJob(HWND hWnd)
 
 bool newMatch(HWND hWnd)
 {
-    const auto ocrResult = GOCREngine->ocrUTF(hWnd, 0, 0, 1, 1);\
-
-    if (ocrResult.size() && wcsstr(ocrResult.data(), L"注意")) {
-        clickKeyboard(VK_RETURN);
+    const auto ocrResult = GOCREngine->ocrUTF(hWnd, 0, 0, 1, 1);
+    if (ocrResult.size()) {
+        if (wcsstr(ocrResult.data(), L"注意")) {
+            clickKeyboard(VK_RETURN);
+        }
+        if (wcsstr(ocrResult.data(), L"启动战局")) {
+            tryToJoinBot();
+        }
     }
 
     clickKeyboard(VK_ESCAPE);
@@ -638,6 +644,7 @@ int main(int argc, const char** argv)
             continue;
         }
 
+        bool isInMatch = false;
         while (GetTickCount() - matchStartTime < static_cast<unsigned int>(GConfig->exitMatchTimeout) * 1000) {
             clickKeyboard('Z');
             Sleep(1000);
@@ -653,10 +660,13 @@ int main(int argc, const char** argv)
                 wcsstr(ocrResult.data(), L"普通") ||
                 wcsstr(ocrResult.data(), L"在线")
                 ) {
+                isInMatch = true;
                 break;
             }
         }
 
-        tryToJoinBot();
+        if (!isInMatch) {
+            tryToJoinBot();
+        }
     }
 }
