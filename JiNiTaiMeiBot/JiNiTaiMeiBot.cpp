@@ -5,6 +5,7 @@
 #include <atlimage.h>
 
 #include <json/json.h>
+#include <curl/curl.h>
 
 #include "Config.h"
 #include "Global.h"
@@ -12,6 +13,9 @@
 
 HWND  GGtaHWnd = nullptr;
 DWORD GGtaPid  = NULL;
+
+#pragma comment(lib, "ws2_32")
+#pragma comment(lib, "crypt32")
 
 struct EnumWindowArg
 {
@@ -418,6 +422,58 @@ bool waitTeam(HWND hWnd)
     return result;
 }
 
+static size_t curlWriteCallback(void* contents, size_t size, size_t nBlock, void* pUser) {
+    static_cast<std::string*>(pUser)->append(static_cast<char*>(contents), size * nBlock);
+    return size * nBlock;
+}
+
+void tryToJoinBot()
+{
+    const auto pCurl = curl_easy_init();
+    if (!pCurl) {
+        GLogger->Err(L"Can not init curl.");
+        system("pause");
+        return;
+    }
+    std::string quellBotList;
+    curl_easy_setopt(pCurl, CURLOPT_URL, "http://quellgtacode.mageangela.cn:52014/botJvp/");
+    curl_easy_setopt(pCurl, CURLOPT_WRITEFUNCTION, curlWriteCallback);
+    curl_easy_setopt(pCurl, CURLOPT_WRITEDATA, &quellBotList);
+    const auto curlResult = curl_easy_perform(pCurl);
+    if (curlResult != CURLE_OK) {
+        swprintf_s(GLogger->Buffer, L"Can not get bot list: %hs", curl_easy_strerror(curlResult));
+        GLogger->Err(GLogger->Buffer);
+        system("pause");
+        return;
+    }
+    swprintf_s(GLogger->Buffer, L"%hs", quellBotList.data());
+    GLogger->BufInfo();
+
+    const auto botLines = split(replaceAll(quellBotList, "\r", ""), "\n");
+
+    for (int i = 3; i < botLines.size(); ++i) {
+        const auto botJvp = botLines[i];
+        if (botJvp.find("|") == std::string::npos) {
+            continue;
+        }
+        const auto name2Jvp = split(botJvp, "|");
+        if (name2Jvp.size() < 2) {
+            continue;
+        }
+        auto steamURL = "steam://rungame/3240220/76561199074735990/-steamjvp%3D" + name2Jvp[1];
+        ShellExecuteA(nullptr, "open", steamURL.c_str(), nullptr, nullptr, SW_SHOW);
+        Sleep(3000);
+        const auto startJoinTime = GetTickCount64();
+        while (GetTickCount64() - startJoinTime < 60 * 1000) {
+            clickKeyboard(VK_RETURN);
+            clickKeyboard('Z');
+            Sleep(1000);
+            if (findText(GGtaHWnd, L"在线模式", 0, 0, 0.5f, 0.5f)) {
+                return;
+            }
+        }
+    }
+}
 
 int main(int argc, const char** argv)
 {
@@ -566,6 +622,6 @@ int main(int argc, const char** argv)
             GLogger->Info(L"Resume GTA process");
             continue;
         }
-        // TODO: 加入差传bot卡出去
+        tryToJoinBot();
     }
 }
