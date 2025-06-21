@@ -4,7 +4,7 @@
 #include "Logger.h"
 
 #include <Windows.h>
-#include <atlimage.h>
+#include <string>
 
 class Config;
 class Logger;
@@ -22,3 +22,5 @@ bool releaseKeyBoard(byte key);
 bool clickKeyboard(byte key, unsigned long milliSecond = 90);
 
 bool setClipboardText(const std::wstring& text);
+
+std::string base64Encode(const void* pData, size_t inputLength);

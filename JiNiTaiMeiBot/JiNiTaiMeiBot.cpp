@@ -52,21 +52,20 @@ BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg)
         return false;
     }
     EnumChildWindows(hWnd, sendTextEnumWindowCallback, customMsg);
-    std::vector<wchar_t> buffer;
-    buffer.resize(0x1000);
-    memset(buffer.data(), 0, buffer.size() * sizeof(wchar_t));
+    constexpr auto bufferSize = 512;
+    wchar_t buffer[bufferSize]{};
 
     if (!args->isClassName) {
-        if (!GetWindowTextW(hWnd, buffer.data(), 0x1000)) {
+        if (!GetWindowTextW(hWnd, buffer, bufferSize - 1)) {
             return true;
         }
     } else {
-        if (!GetClassNameW(hWnd, buffer.data(), 0x1000)) {
+        if (!GetClassNameW(hWnd, buffer, bufferSize - 1)) {
             return true;
         }
     }
 
-    if (wcsstr(buffer.data(), args->windowName)) {
+    if (wcsstr(buffer, args->windowName)) {
         if (GConfig->debug) {
             swprintf_s(GLogger->Buffer, L"Steam char window handle: %p", hWnd);
             GLogger->Debug(GLogger->Buffer);

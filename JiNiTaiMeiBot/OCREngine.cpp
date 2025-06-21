@@ -3,6 +3,7 @@
 #include "Global.h"
 #include "Config.h"
 
+#include <atlimage.h>
 #include <filesystem>
 #include <json/json.h>
 
@@ -120,16 +121,56 @@ Json::Value OCREngine::ocrJson(HWND hWnd, float x, float y, float z, float w) co
     }
 
     StretchBlt(image.GetDC(), 0, 0, image.GetWidth(), image.GetHeight(), hdcDesktop, startX, startY, width, height, SRCCOPY);
-    if (FAILED(image.Save(L"temp.png", Gdiplus::ImageFormatPNG))) {
+    image.ReleaseDC();
+    const auto pStream = SHCreateMemStream(nullptr, NULL);
+    if (!pStream) {
+        image.ReleaseGDIPlus();
+        GLogger->Err(L"Can not create stream");
+        return resultJsonValue;
+    }
+
+    if (FAILED(image.Save(pStream, Gdiplus::ImageFormatPNG))) {
+        pStream->Release();
+        image.ReleaseGDIPlus();
         GLogger->Err(L"Can not save image.");
         return resultJsonValue;
     }
 
-    image.ReleaseDC();
+    STATSTG stat{};
+    if (FAILED(pStream->Stat(&stat, STATFLAG_NONAME))) {
+        pStream->Release();
+        image.ReleaseGDIPlus();
+        GLogger->Err(L"Can not get buffer size.");
+        return resultJsonValue;
+    }
+
+    LARGE_INTEGER li = {};
+    if (FAILED(pStream->Seek(li, STREAM_SEEK_SET, nullptr))) {
+        pStream->Release();
+        image.ReleaseGDIPlus();
+        GLogger->Err(L"Can not seek to buffer head.");
+        return resultJsonValue;
+    }
+
+    const auto           size = static_cast<ULONG>(stat.cbSize.QuadPart);
+    std::vector<uint8_t> imgBuffer;
+    ULONG                bytesRead = 0;
+    imgBuffer.resize(size);
+    if (FAILED(pStream->Read(imgBuffer.data(), size, &bytesRead)) || bytesRead != size) {
+        pStream->Release();
+        image.ReleaseGDIPlus();
+        GLogger->Err(L"Can not read buffer data.");
+        return resultJsonValue;
+    }
+
+    pStream->Release();
     image.ReleaseGDIPlus();
     ReleaseDC(WindowFromDC(hdcDesktop), hdcDesktop);
 
-    if (!writePipe("{\"image_path\": \"temp.png\"}\n")) {
+    const auto base64Image = base64Encode(imgBuffer.data(), imgBuffer.size());
+    if (!writePipe("{\"image_base64\": \"") ||
+        !writePipe(base64Image) ||
+        !writePipe("\"}\n")) {
         GLogger->Err(L"Can not write request to pipe.");
     }
 
@@ -144,7 +185,7 @@ Json::Value OCREngine::ocrJson(HWND hWnd, float x, float y, float z, float w) co
 
     const auto currentTime = GetTickCount64();
     while (GetTickCount64() - currentTime < GConfig->ocrTimeout * 1000) {
-        if (!ReadFile(mHandleRead, buffer.data(), static_cast<DWORD>(buffer.size()), &nRead, nullptr)) {
+        if (!ReadFile(mHandleRead, buffer.data(), static_cast<DWORD>(buffer.size() - 1), &nRead, nullptr)) {
             break;
         }
         startResult.append(buffer.data(), nRead);
@@ -197,10 +238,10 @@ std::vector<wchar_t> OCREngine::ocrUTF(HWND hWnd, float x, float y, float z, flo
         GLogger->Debug(GLogger->Buffer);
     }
 
-    resultWideChar.resize((resultText.length() + 1) * 4);
+    resultWideChar.resize((resultText.length() + 1) * 2);
     memset(resultWideChar.data(), 0, resultWideChar.size() * sizeof(wchar_t));
 
-    MultiByteToWideChar(CP_UTF8, 0, resultText.data(), -1, resultWideChar.data(), static_cast<int>(resultWideChar.size()));
+    MultiByteToWideChar(CP_UTF8, 0, resultText.data(), -1, resultWideChar.data(), static_cast<int>(resultWideChar.size() - 1));
 
     return resultWideChar;
 }
