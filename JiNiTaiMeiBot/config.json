@@ -1,11 +1,10 @@
 {
 	"checkLoopTime" : 1,
-	"crossAisleTime" : 4000,
+	"crossAisleTime" : 3000,
 	"debug" : true,
 	"delaySuspendTime" : 5,
 	"exitMatchTimeout" : 120,
-	"goOutStairsTime" : 3500,
-	"intoWallTime" : 1500,
+	"goOutStairsTime" : 1000,
 	"joiningPlayerKick" : 120,
 	"matchPanelTimeout" : 300,
 	"ocrArgs" : "--models=\".\\models\" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx  --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1",
@@ -18,7 +17,7 @@
 	"pressSTimeStairs" : 400,
 	"startMatchDelay" : 15,
 	"startOnAllJoined" : true,
-	"suspendAfterMatchStarted" : false,
+	"suspendAfterMatchStarted" : true,
 	"suspendGTATime" : 15,
 	"waitFindJobTimeout" : 15000
 }

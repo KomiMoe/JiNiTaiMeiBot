@@ -212,18 +212,19 @@ void goDownstairs()
 
     // 走到楼梯口 - start
     pressKeyboard('D');
-    Sleep(8000);
+    Sleep(6000);
     for (const auto startTime = GetTickCount64(); GetTickCount64() - startTime < 2500;) {
         clickKeyboard('S', 150);
+        clickKeyboard('W', 150);
     }
-    Sleep(1500);
+    Sleep(2000);
     releaseKeyBoard('D');
 
     // 走到楼梯口 - end
 
     // 走进楼梯门 - start
     pressKeyboard('W');
-    Sleep(3000);
+    Sleep(2000);
     releaseKeyBoard('W');
     // 走进楼梯门 - end
 
@@ -233,12 +234,14 @@ void goDownstairs()
     releaseKeyBoard('S');
 
     pressKeyboard('D');
+    pressKeyboard('W');
     Sleep(2000);
+    releaseKeyBoard('W');
     releaseKeyBoard('D');
 
-    pressKeyboard('W');
-    Sleep(3000);
-    releaseKeyBoard('W');
+    pressKeyboard('A');
+    Sleep(5000);
+    releaseKeyBoard('A');
     // 走下楼梯 - end
 }
 
@@ -254,14 +257,6 @@ bool foundJob(HWND hWnd)
     }
     // 走出门 - end
 
-    // 卡在墙上 - start
-    pressKeyboard('W');
-    pressKeyboard('A');
-    Sleep(GConfig->intoWallTime);
-    releaseKeyBoard('A');
-    releaseKeyBoard('W');
-    // 卡在墙上 - end
-
     // 走到任务附近 - start
     startTickCount = GetTickCount64();
 
@@ -272,17 +267,16 @@ bool foundJob(HWND hWnd)
     // 走到任务附近 - end
 
     // OCR 走到黄圈 - start
-    clickKeyboard('S', GConfig->pressSTimeGoJob);
     startTickCount  = GetTickCount64();
     bool isJobFound = false;
     while (GetTickCount64() - startTickCount < GConfig->waitFindJobTimeout) {
         clickKeyboard('S', GConfig->pressSTimeGoJob);
-        Sleep(300);
+        //Sleep(300);
         if ((isJobFound = ocrFoundJob(hWnd))) {
             break;
         }
         clickKeyboard('A', GConfig->pressATimeGoJob);
-        Sleep(300);
+        //Sleep(300);
         if ((isJobFound = ocrFoundJob(hWnd))) {
             break;
         }

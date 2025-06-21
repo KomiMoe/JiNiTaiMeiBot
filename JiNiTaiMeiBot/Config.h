@@ -75,13 +75,11 @@ public:
 
     REG_INT_VALUE(pressSTimeStairs, 400);
     REG_INT_VALUE(pressATimeStairs, 400);
-    REG_INT_VALUE(goOutStairsTime, 3500);
-
-    REG_INT_VALUE(intoWallTime, 1500);
+    REG_INT_VALUE(goOutStairsTime, 1000);
 
     REG_INT_VALUE(pressSTimeAisle, 360);
     REG_INT_VALUE(pressATimeAisle, 500);
-    REG_INT_VALUE(crossAisleTime, 4000);
+    REG_INT_VALUE(crossAisleTime, 3000);
 
     REG_INT_VALUE(pressSTimeGoJob, 340);
     REG_INT_VALUE(pressATimeGoJob, 480);
