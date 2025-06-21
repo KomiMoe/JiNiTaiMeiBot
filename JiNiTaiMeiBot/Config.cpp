@@ -26,10 +26,12 @@ Config::Config(std::string& configFileName)
     for (const auto& [pValue, callback] : writeCallbacks) {
         callback(configRoot, pValue);
     }
+    Json::StreamWriterBuilder builder;
+    builder["emitUTF8"] = true;
 
-    Json::StyledStreamWriter writer{};
+    std::unique_ptr<Json::StreamWriter> writer(builder.newStreamWriter());
     std::ofstream            ofs(configFileName);
-    writer.write(ofs, configRoot);
+    writer->write(configRoot, &ofs);
     ofs.flush();
     ofs.close();
 }

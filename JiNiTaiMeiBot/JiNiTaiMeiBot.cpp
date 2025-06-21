@@ -119,6 +119,10 @@ BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg)
 
 void postMessageToSteamChat(LPCWSTR msg)
 {
+    if (!wcslen(msg)) {
+        return;
+    }
+
     const auto oldFocus = GetForegroundWindow();
 
     constexpr auto steamChatWindowName = L"蠢人";
@@ -128,6 +132,17 @@ void postMessageToSteamChat(LPCWSTR msg)
     EnumWindows(sendTextEnumWindowCallback, reinterpret_cast<LPARAM>(&enumArg));
 
     switchFocus(oldFocus);
+}
+
+void postMessageToSteamChat(const std::string& msg)
+{
+    if (msg.empty()) {
+        return;
+    }
+    std::vector<wchar_t> buffer;
+    buffer.resize((msg.size() + 1 ) * 4);
+    MultiByteToWideChar(CP_UTF8, 0, msg.data(), -1, buffer.data(), buffer.size());
+    postMessageToSteamChat(buffer.data());
 }
 
 bool findText(HWND hWnd, LPCWSTR text, float x, float y, float z, float w)
@@ -353,7 +368,16 @@ bool waitTeam(HWND hWnd)
     long     lastJoiningCount      = 0;
     long     lastJoinedCount       = 0;
     long     lastActivePlayerCount = 1;
-    postMessageToSteamChat(L"德瑞差事已启动，卡好CEO直接来");
+    postMessageToSteamChat(GConfig->msgOpenJobPanel);
+
+    clickKeyboard('W');
+    Sleep(800);
+    clickKeyboard(VK_RETURN);
+    Sleep(1000);
+    clickKeyboard('A');
+    Sleep(800);
+    clickKeyboard('W');
+
     while (true) {
         Sleep(GConfig->checkLoopTime * 1000);
         const auto currentCheckTime = GetTickCount64();
@@ -362,12 +386,12 @@ bool waitTeam(HWND hWnd)
         }
 
         if (GetTickCount64() - startWaitTeamTickCount > GConfig->matchPanelTimeout * 1000 && !lastJoinedCount) {
-            postMessageToSteamChat(L"启动任务超时，重新启动中");
+            postMessageToSteamChat(GConfig->msgWaitPlayerTimeout);
             break;
         }
 
         if (GetTickCount64() - lastJoiningTime > GConfig->joiningPlayerKick * 1000 && lastJoiningCount) {
-            postMessageToSteamChat(L"任务中含有卡B，重新启动中");
+            postMessageToSteamChat(GConfig->msgJoiningPlayerKick);
             break;
         }
 
@@ -393,7 +417,7 @@ bool waitTeam(HWND hWnd)
             if (lastActivePlayerCount != numActivePlayer) {
                 lastActivePlayerCount = numActivePlayer;
                 if (numActivePlayer >= 4) {
-                    postMessageToSteamChat(L"满了");
+                    postMessageToSteamChat(GConfig->msgTeamFull);
                 }
             }
 
@@ -408,7 +432,7 @@ bool waitTeam(HWND hWnd)
                 Sleep(1000);
                 continue;
             }
-            postMessageToSteamChat(L"开了，请等待下一辆车");
+            postMessageToSteamChat(GConfig->msgJobStarted);
             result = true;
             break;
         }
@@ -566,15 +590,6 @@ int main(int argc, const char** argv)
         while (!isOnJobPanel(GGtaHWnd)) {
             Sleep(1000);
         }
-
-        clickKeyboard('W');
-        Sleep(800);
-        clickKeyboard(VK_RETURN);
-        Sleep(2000);
-        clickKeyboard('A');
-        Sleep(800);
-        clickKeyboard('W');
-        Sleep(500);
 
         const auto waitTeamResult = waitTeam(GGtaHWnd);
         if (!waitTeamResult) {
