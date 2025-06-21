@@ -622,6 +622,23 @@ int main(int argc, const char** argv)
             GLogger->Info(L"Resume GTA process");
             continue;
         }
+
+        while (GetTickCount() - matchStartTime < static_cast<unsigned int>(GConfig->exitMatchTimeout) * 1000) {
+            clickKeyboard('Z');
+            Sleep(1000);
+            const auto ocrResult = GOCREngine->ocrUTF(GGtaHWnd, 0, 0, .5f, 1.f);
+
+            if (wcsstr(ocrResult.data(), L"德瑞") ||
+                wcsstr(ocrResult.data(), L"前往") ||
+                wcsstr(ocrResult.data(), L"困难") ||
+                wcsstr(ocrResult.data(), L"简单") ||
+                wcsstr(ocrResult.data(), L"普通") ||
+                wcsstr(ocrResult.data(), L"在线")
+                ) {
+                break;
+            }
+        }
+
         tryToJoinBot();
     }
 }
