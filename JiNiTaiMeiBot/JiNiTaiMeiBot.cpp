@@ -141,7 +141,7 @@ void postMessageToSteamChat(const std::string& msg)
     }
     std::vector<wchar_t> buffer;
     buffer.resize((msg.size() + 1 ) * 4);
-    MultiByteToWideChar(CP_UTF8, 0, msg.data(), -1, buffer.data(), buffer.size());
+    MultiByteToWideChar(CP_UTF8, 0, msg.data(), -1, buffer.data(), static_cast<int>(buffer.size()));
     postMessageToSteamChat(buffer.data());
 }
 
@@ -302,6 +302,12 @@ bool foundJob(HWND hWnd)
 
 bool newMatch(HWND hWnd)
 {
+    const auto ocrResult = GOCREngine->ocrUTF(hWnd, 0, 0, 1, 1);\
+
+    if (ocrResult.size() && wcsstr(ocrResult.data(), L"注意")) {
+        clickKeyboard(VK_RETURN);
+    }
+
     clickKeyboard(VK_ESCAPE);
     Sleep(2000);
 
@@ -636,6 +642,9 @@ int main(int argc, const char** argv)
             clickKeyboard('Z');
             Sleep(1000);
             const auto ocrResult = GOCREngine->ocrUTF(GGtaHWnd, 0, 0, .5f, 1.f);
+            if (!ocrResult.size()) {
+                continue;
+            }
 
             if (wcsstr(ocrResult.data(), L"德瑞") ||
                 wcsstr(ocrResult.data(), L"前往") ||
