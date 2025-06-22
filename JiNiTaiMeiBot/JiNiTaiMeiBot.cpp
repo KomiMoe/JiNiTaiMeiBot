@@ -24,8 +24,6 @@ struct EnumWindowArg
     bool    isClassName = false;
 };
 
-void tryToJoinBot();
-
 bool switchFocus(HWND hWnd)
 {
     // const auto oldWnd = GetForegroundWindow();
@@ -309,9 +307,6 @@ bool newMatch(HWND hWnd)
         if (wcsstr(ocrResult.data(), L"注意")) {
             clickKeyboard(VK_RETURN);
         }
-        if (wcsstr(ocrResult.data(), L"启动战局")) {
-            tryToJoinBot();
-        }
     }
 
     clickKeyboard(VK_ESCAPE);
@@ -582,6 +577,11 @@ int main(int argc, const char** argv)
             }
             Sleep(5000);
             GLogger->Warn(L"Retry start a new match");
+            if (newMatchErrorCount > 10) {
+                GLogger->Info(L"Suspend GTA process");
+                suspendProcess(GGtaPid, GConfig->suspendGTATime * 1000);
+                GLogger->Info(L"Resume GTA process");
+            }
         }
 
         while (!isRespawned(GGtaHWnd)) {
@@ -628,6 +628,7 @@ int main(int argc, const char** argv)
             Sleep(1000);
         }
 
+        bool isInMatch = false;
         if (GConfig->suspendAfterMatchStarted) {
             while (GetTickCount() - matchStartTime < static_cast<unsigned int>(GConfig->exitMatchTimeout) * 1000) {
                 clickKeyboard('Z');
@@ -641,6 +642,7 @@ int main(int argc, const char** argv)
                     wcsstr(ocrResult.data(), L"普通") ||
                     wcsstr(ocrResult.data(), L"在线")
                 ) {
+                    isInMatch = true;
                     break;
                 }
             }
@@ -651,10 +653,11 @@ int main(int argc, const char** argv)
             GLogger->Info(L"Suspend GTA process");
             suspendProcess(GGtaPid, GConfig->suspendGTATime * 1000);
             GLogger->Info(L"Resume GTA process");
-            continue;
+            if (isInMatch) {
+                continue;
+            }
         }
 
-        bool isInMatch = false;
         while (GetTickCount() - matchStartTime < static_cast<unsigned int>(GConfig->exitMatchTimeout) * 1000) {
             clickKeyboard('Z');
             Sleep(1000);
