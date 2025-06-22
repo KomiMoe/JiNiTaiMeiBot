@@ -584,8 +584,17 @@ int main(int argc, const char** argv)
             }
         }
 
-        while (!isRespawned(GGtaHWnd)) {
+        const auto waitRespawnStartTime = GetTickCount64();
+        bool isNowRespawned = false;
+        while (GetTickCount64() - waitRespawnStartTime < 60 * 1000) {
+            if ((isNowRespawned = isRespawned(GGtaHWnd))) {
+                break;
+            }
             Sleep(300);
+        }
+
+        if (!isNowRespawned) {
+            continue;
         }
 
         goDownstairs();
