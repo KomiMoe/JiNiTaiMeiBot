@@ -3,6 +3,7 @@
 
 #include <Windows.h>
 #include <atlimage.h>
+#include <TlHelp32.h>
 
 #include <json/json.h>
 #include <curl/curl.h>
@@ -35,14 +36,45 @@ bool switchFocus(HWND hWnd)
     // AttachThreadInput(GetWindowThreadProcessId(GetForegroundWindow(), nullptr), GetCurrentThreadId(), FALSE);
     // AttachThreadInput(GetWindowThreadProcessId(oldWnd, nullptr), GetCurrentThreadId(), FALSE);
     // return GetForegroundWindow() == hWnd;
-    pressKeyboard(VK_LMENU);
-    Sleep(100);
-    pressKeyboard(VK_TAB);
-    Sleep(200);
-    releaseKeyBoard(VK_TAB);
-    Sleep(50);
-    releaseKeyBoard(VK_LMENU);
-    Sleep(500);
+
+    // pressKeyboard(VK_LMENU);
+    // Sleep(100);
+    // pressKeyboard(VK_TAB);
+    // Sleep(200);
+    // releaseKeyBoard(VK_TAB);
+    // Sleep(50);
+    // releaseKeyBoard(VK_LMENU);
+    // Sleep(500);
+    // return true;
+
+    if (!IsWindow(hWnd)) {
+        return false;
+    }
+
+    if (IsIconic(hWnd)) {
+        ShowWindow(hWnd, SW_RESTORE);
+    }
+
+    const auto foreThread = GetWindowThreadProcessId(GetForegroundWindow(), nullptr);
+    const auto appThread  = GetCurrentThreadId();
+
+    if (foreThread != appThread) {
+        AttachThreadInput(foreThread, appThread, TRUE);
+        BringWindowToTop(hWnd);
+        ShowWindow(hWnd, SW_SHOW);
+        AttachThreadInput(foreThread, appThread, FALSE);
+    } else {
+        BringWindowToTop(hWnd);
+        ShowWindow(hWnd, SW_SHOW);
+    }
+
+    if (!SetForegroundWindow(hWnd)) {
+        SwitchToThisWindow(hWnd, TRUE);
+    }
+
+    SetFocus(hWnd);
+    SetActiveWindow(hWnd);
+
     return true;
 }
 
@@ -307,10 +339,12 @@ bool newMatch(HWND hWnd)
         if (wcsstr(ocrResult.data(), L"注意")) {
             clickKeyboard(VK_RETURN);
         }
+        if (!wcsstr(ocrResult.data(), L"地图")) {
+            clickKeyboard(VK_ESCAPE);
+            Sleep(2000);
+        }
     }
 
-    clickKeyboard(VK_ESCAPE);
-    Sleep(2000);
 
     if (!findText(hWnd, L"地图", 0, 0, 0.5f, 0.5f)) {
         clickKeyboard(VK_ESCAPE);
@@ -489,6 +523,7 @@ void tryToJoinBot()
         ShellExecuteA(nullptr, "open", steamURL.c_str(), nullptr, nullptr, SW_SHOW);
         Sleep(3000);
         const auto startJoinTime = GetTickCount64();
+        bool hasSuspended = false;
         while (GetTickCount64() - startJoinTime < 60 * 1000) {
             clickKeyboard(VK_RETURN);
             clickKeyboard('Z');
@@ -496,8 +531,53 @@ void tryToJoinBot()
             if (findText(GGtaHWnd, L"在线模式", 0, 0, 0.5f, 0.5f)) {
                 return;
             }
+            if (!hasSuspended && GetTickCount64() - startJoinTime > 30 * 1000) {
+                suspendProcess(GGtaPid, GConfig->suspendGTATime * 1000);
+                hasSuspended = true;
+            }
         }
     }
+}
+
+void restartGame()
+{
+    GGtaHWnd = nullptr;
+    GGtaPid  = 0;
+    if (const auto hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL); hSnapshot && hSnapshot != INVALID_HANDLE_VALUE) {
+        PROCESSENTRY32W proc32{};
+        proc32.dwSize = sizeof proc32;
+        if (Process32FirstW(hSnapshot, &proc32)) {
+            do {
+                if (!lstrcmpiW(proc32.szExeFile, L"GTA5_Enhanced.exe") ||
+                    !lstrcmpiW(proc32.szExeFile, L"GTA5_Enhanced_BE.exe") ||
+                    !lstrcmpiW(proc32.szExeFile, L"PlayGTAV.exe") ||
+                    !lstrcmpiW(proc32.szExeFile, L"RockstarErrorHandler.exe") ||
+                    !lstrcmpiW(proc32.szExeFile, L"RockstarService.exe") ||
+                    !lstrcmpiW(proc32.szExeFile, L"SocialClubHelper.exe") ||
+                    !lstrcmpiW(proc32.szExeFile, L"Launcher.exe")) {
+                    if (const auto hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, proc32.th32ProcessID); hProcess && hProcess != INVALID_HANDLE_VALUE) {
+                        TerminateProcess(hProcess, NULL);
+                        CloseHandle(hProcess);
+                    }
+                }
+            } while (Process32NextW(hSnapshot, &proc32));
+        }
+        CloseHandle(hSnapshot);
+    }
+    ShellExecuteA(nullptr, "open", "steam://rungameid/3240220", nullptr, nullptr, SW_SHOW);
+
+    while (!((GGtaHWnd = FindWindowW(nullptr, L"Grand Theft Auto V")))) {
+        GLogger->Info(L"Waiting for GTA window.");
+        Sleep(1000);
+    }
+
+    GetWindowThreadProcessId(GGtaHWnd, &GGtaPid);
+    if (!GGtaPid) {
+        GLogger->Err(L"Can not lookup GTA process id");
+        system("pause");
+        return;
+    }
+    switchFocus(GGtaHWnd);
 }
 
 int main(int argc, const char** argv)
@@ -565,6 +645,12 @@ int main(int argc, const char** argv)
     while (true) {
         Sleep(1000);
 
+        GGtaHWnd = FindWindowW(nullptr, L"Grand Theft Auto V");
+        if (!GGtaHWnd || GetForegroundWindow() != GGtaHWnd) {
+            GLogger->Warn(L"Foreground window is not GTA, restarting game.");
+            restartGame();
+        }
+
         int newMatchErrorCount = 0;
         while (!newMatch(GGtaHWnd)) {
             newMatchErrorCount++;
@@ -577,10 +663,19 @@ int main(int argc, const char** argv)
             }
             Sleep(5000);
             GLogger->Warn(L"Retry start a new match");
-            if (newMatchErrorCount > 10) {
+            if (newMatchErrorCount == 10) {
+                GLogger->Info(L"Try to join bot.");
+                tryToJoinBot();
+            }
+            if (newMatchErrorCount == 15) {
                 GLogger->Info(L"Suspend GTA process");
                 suspendProcess(GGtaPid, GConfig->suspendGTATime * 1000);
                 GLogger->Info(L"Resume GTA process");
+            }
+            if (newMatchErrorCount == 20) {
+                GLogger->Warn(L"Can not start a new match, restarting game.");
+                restartGame();
+                newMatchErrorCount = 0;
             }
         }
 
