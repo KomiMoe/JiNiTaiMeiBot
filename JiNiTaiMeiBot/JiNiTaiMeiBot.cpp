@@ -599,8 +599,18 @@ int main(int argc, const char** argv)
         }
 
         clickKeyboard('E');
+        const auto waitJobDownloadStartTime = GetTickCount64();
+        auto isJobPanelOpen = true;
         while (!isOnJobPanel(GGtaHWnd)) {
             Sleep(1000);
+            if (GetTickCount64() - waitJobDownloadStartTime > 60 * 1000) {
+                isJobPanelOpen = false;
+                break;
+            }
+        }
+
+        if (!isJobPanelOpen) {
+            continue;
         }
 
         const auto waitTeamResult = waitTeam(GGtaHWnd);
