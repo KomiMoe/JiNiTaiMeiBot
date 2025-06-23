@@ -74,7 +74,7 @@ bool switchFocus(HWND hWnd)
 
     SetFocus(hWnd);
     SetActiveWindow(hWnd);
-
+    Sleep(500);
     return true;
 }
 
@@ -89,7 +89,7 @@ BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg)
     }
     EnumChildWindows(hWnd, sendTextEnumWindowCallback, customMsg);
     constexpr auto bufferSize = 512;
-    wchar_t buffer[bufferSize]{};
+    wchar_t        buffer[bufferSize]{};
 
     if (!args->isClassName) {
         if (!GetWindowTextW(hWnd, buffer, bufferSize - 1)) {
@@ -172,7 +172,7 @@ void postMessageToSteamChat(const std::string& msg)
         return;
     }
     std::vector<wchar_t> buffer;
-    buffer.resize((msg.size() + 1 ) * 4);
+    buffer.resize((msg.size() + 1) * 4);
     MultiByteToWideChar(CP_UTF8, 0, msg.data(), -1, buffer.data(), static_cast<int>(buffer.size()));
     postMessageToSteamChat(buffer.data());
 }
@@ -345,7 +345,6 @@ bool newMatch(HWND hWnd)
         }
     }
 
-
     if (!findText(hWnd, L"地图", 0, 0, 0.5f, 0.5f)) {
         clickKeyboard(VK_ESCAPE);
         return false;
@@ -481,13 +480,17 @@ bool waitTeam(HWND hWnd)
     return result;
 }
 
-static size_t curlWriteCallback(void* contents, size_t size, size_t nBlock, void* pUser) {
+static size_t curlWriteCallback(void* contents, size_t size, size_t nBlock, void* pUser)
+{
     static_cast<std::string*>(pUser)->append(static_cast<char*>(contents), size * nBlock);
     return size * nBlock;
 }
 
 void tryToJoinBot()
 {
+    if (!FindWindowW(nullptr, L"Grand Theft Auto V")) {
+        return;
+    }
     const auto pCurl = curl_easy_init();
     if (!pCurl) {
         GLogger->Err(L"Can not init curl.");
@@ -523,7 +526,7 @@ void tryToJoinBot()
         ShellExecuteA(nullptr, "open", steamURL.c_str(), nullptr, nullptr, SW_SHOW);
         Sleep(3000);
         const auto startJoinTime = GetTickCount64();
-        bool hasSuspended = false;
+        bool       hasSuspended  = false;
         while (GetTickCount64() - startJoinTime < 60 * 1000) {
             clickKeyboard(VK_RETURN);
             clickKeyboard('Z');
@@ -578,6 +581,56 @@ void restartGame()
         return;
     }
     switchFocus(GGtaHWnd);
+
+    // 开始加入故事模式
+    auto startTime = GetTickCount64();
+    while (!findText(GGtaHWnd, L"加入自由模式", 0, 0, 1, 1)) {
+        if (GetTickCount64() - startTime > 120 * 1000) {
+            return;
+        }
+        Sleep(1000);
+    }
+    Sleep(1000);
+    for (int i = 0; i < 2; ++i) {
+        clickKeyboard('E');
+        Sleep(3000);
+    }
+    clickKeyboard(VK_RETURN);
+
+    // 等待加入故事模式
+    startTime = GetTickCount64();
+    while (!findText(GGtaHWnd, L"地图", 0, 0, 0.5f, 0.5f)) {
+        if (GetTickCount64() - startTime > 120 * 1000) {
+            return;
+        }
+        clickKeyboard(VK_ESCAPE);
+        Sleep(2000);
+    }
+
+    // 开始加入在线模式
+    for (int i = 0; i < 5; ++i) {
+        clickKeyboard('E');
+        Sleep(2000);
+    }
+    clickKeyboard(VK_RETURN);
+    Sleep(1000);
+    clickKeyboard('W');
+    Sleep(1000);
+    clickKeyboard(VK_RETURN);
+    Sleep(1000);
+    if (!findText(GGtaHWnd, L"邀请", 0, 0, 0.5f, 0.5f)) {
+        for (int i = 0; i < 3; ++i) {
+            clickKeyboard(VK_ESCAPE);
+            Sleep(1000);
+        }
+        return;
+    }
+    clickKeyboard('S');
+    Sleep(600);
+    clickKeyboard(VK_RETURN);
+    Sleep(2000);
+    clickKeyboard(VK_RETURN);
+
 }
 
 int main(int argc, const char** argv)
@@ -646,13 +699,14 @@ int main(int argc, const char** argv)
         Sleep(1000);
 
         GGtaHWnd = FindWindowW(nullptr, L"Grand Theft Auto V");
+        int newMatchErrorCount = 0;
         if (!GGtaHWnd || GetForegroundWindow() != GGtaHWnd) {
             GLogger->Warn(L"Foreground window is not GTA, restarting game.");
             restartGame();
+            newMatchErrorCount = -1;
         }
 
-        int newMatchErrorCount = 0;
-        while (!newMatch(GGtaHWnd)) {
+        while (!newMatch(GGtaHWnd) && newMatchErrorCount >= 0) {
             newMatchErrorCount++;
             if (newMatchErrorCount % 3 == 2) {
                 GLogger->Warn(L"Try to back to normal status");
@@ -675,12 +729,12 @@ int main(int argc, const char** argv)
             if (newMatchErrorCount == 20) {
                 GLogger->Warn(L"Can not start a new match, restarting game.");
                 restartGame();
-                newMatchErrorCount = 0;
+                break;
             }
         }
 
         const auto waitRespawnStartTime = GetTickCount64();
-        bool isNowRespawned = false;
+        bool       isNowRespawned       = false;
         while (GetTickCount64() - waitRespawnStartTime < 60 * 1000) {
             if ((isNowRespawned = isRespawned(GGtaHWnd))) {
                 break;
@@ -704,7 +758,7 @@ int main(int argc, const char** argv)
 
         clickKeyboard('E');
         const auto waitJobDownloadStartTime = GetTickCount64();
-        auto isJobPanelOpen = true;
+        auto       isJobPanelOpen           = true;
         while (!isOnJobPanel(GGtaHWnd)) {
             Sleep(1000);
             if (GetTickCount64() - waitJobDownloadStartTime > 60 * 1000) {
@@ -776,7 +830,7 @@ int main(int argc, const char** argv)
                 wcsstr(ocrResult.data(), L"简单") ||
                 wcsstr(ocrResult.data(), L"普通") ||
                 wcsstr(ocrResult.data(), L"在线")
-                ) {
+            ) {
                 isInMatch = true;
                 break;
             }
