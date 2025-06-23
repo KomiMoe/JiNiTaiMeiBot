@@ -85,7 +85,7 @@ public:
     REG_INT_VALUE(crossAisleTime, 3000, "差事层进行\"穿过走道\"动作持续时间 (毫秒)");
 
     REG_INT_VALUE(pressSTimeGoJob, 340, "差事层进行\"寻找差事黄圈\"动作时 每轮按S的持续时间 (毫秒)");
-    REG_INT_VALUE(pressATimeGoJob, 480, "差事层进行\"寻找差事黄圈\"动作时 每轮按S的持续时间 (毫秒)");
+    REG_INT_VALUE(pressATimeGoJob, 480, "差事层进行\"寻找差事黄圈\"动作时 每轮按A的持续时间 (毫秒)");
     REG_INT_VALUE(waitFindJobTimeout, 15000, "差事层进行\"寻找差事黄圈\"动作超时时间 (毫秒)");
 
     REG_STRING_VALUE(msgOpenJobPanel, "德瑞差事已启动，卡好CEO直接来", "开好面板时发的消息 (设置为空字符串则不发这条消息)");
