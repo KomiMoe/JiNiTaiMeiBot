@@ -11,6 +11,7 @@ https://wwwi.lanzouo.com/b032d1ec8f
   4. 点击Steam聊天框
   5. 点进游戏窗口
   6. 打两年半的篮球
+- 暂停运行/恢复运行 热键: F10
 
 ## 配置文件(config.json)
 
