@@ -151,6 +151,7 @@ BOOL CALLBACK sendTextEnumWindowCallback(HWND hWnd, LPARAM customMsg)
 
 void postMessageToSteamChat(LPCWSTR msg)
 {
+    AutoLock __autoLock(GSuspendMutex);
     if (!wcslen(msg)) {
         return;
     }
@@ -201,6 +202,7 @@ bool ocrFoundJob(HWND hWnd)
 
 bool suspendProcess(DWORD pid, DWORD time)
 {
+    AutoLock __autoLock(GSuspendMutex);
     static DWORD (__stdcall*procZwSuspendProcess)(HANDLE hProc) = nullptr;
     static DWORD (__stdcall*procZwResumeProcess)(HANDLE hProc)  = nullptr;
 
@@ -249,6 +251,7 @@ bool suspendProcess(DWORD pid, DWORD time)
 
 void goDownstairs()
 {
+    AutoLock __autoLock(GSuspendMutex);
     // 走到柱子上卡住 - start
     pressKeyboard('A');
     pressKeyboard('W');
@@ -296,23 +299,25 @@ void goDownstairs()
 bool foundJob(HWND hWnd)
 {
     auto startTickCount = GetTickCount64();
+    {
+        AutoLock __autoLock(GSuspendMutex);
 
-    // 走出门 - start
-    while (GetTickCount64() - startTickCount < GConfig->goOutStairsTime) {
-        clickKeyboard('S', GConfig->pressSTimeStairs);
-        clickKeyboard('A', GConfig->pressATimeStairs);
+        // 走出门 - start
+        while (GetTickCount64() - startTickCount < GConfig->goOutStairsTime) {
+            clickKeyboard('S', GConfig->pressSTimeStairs);
+            clickKeyboard('A', GConfig->pressATimeStairs);
+        }
+        // 走出门 - end
+
+        // 走到任务附近 - start
+        startTickCount = GetTickCount64();
+
+        while (GetTickCount64() - startTickCount < GConfig->crossAisleTime) {
+            clickKeyboard('S', GConfig->pressSTimeAisle);
+            clickKeyboard('A', GConfig->pressATimeAisle);
+        }
+        // 走到任务附近 - end
     }
-    // 走出门 - end
-
-    // 走到任务附近 - start
-    startTickCount = GetTickCount64();
-
-    while (GetTickCount64() - startTickCount < GConfig->crossAisleTime) {
-        clickKeyboard('S', GConfig->pressSTimeAisle);
-        clickKeyboard('A', GConfig->pressATimeAisle);
-    }
-    // 走到任务附近 - end
-
     // OCR 走到黄圈 - start
     startTickCount  = GetTickCount64();
     bool isJobFound = false;
@@ -636,6 +641,8 @@ void restartGame()
 
 }
 
+std::mutex GSuspendMutex;
+
 int main(int argc, const char** argv)
 {
     SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
@@ -698,10 +705,29 @@ int main(int argc, const char** argv)
         Sleep(1000);
     }
 
+    const auto hotKeyThread = std::thread([]()
+    {
+        bool gotLock = false;
+        while (true) {
+            if (GetAsyncKeyState(VK_F10) & 0x8000) {
+                if (gotLock) {
+                    GLogger->Info(L"Resumed.");
+                    GSuspendMutex.unlock();
+                } else {
+                    GSuspendMutex.lock();
+                    GLogger->Info(L"Suspended.");
+                }
+                gotLock = !gotLock;
+                Sleep(600);
+            }
+            Sleep(1);
+        }
+    });
+
     while (true) {
         Sleep(1000);
 
-        GGtaHWnd = FindWindowW(nullptr, L"Grand Theft Auto V");
+        GGtaHWnd               = FindWindowW(nullptr, L"Grand Theft Auto V");
         int newMatchErrorCount = 0;
         if (!GGtaHWnd || GetForegroundWindow() != GGtaHWnd) {
             GLogger->Warn(L"Foreground window is not GTA, restarting game.");

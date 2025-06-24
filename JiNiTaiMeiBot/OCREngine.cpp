@@ -94,6 +94,7 @@ bool OCREngine::writePipe(const std::string& text) const
 
 Json::Value OCREngine::ocrJson(HWND hWnd, float x, float y, float z, float w) const
 {
+    AutoLock __autoLock(GSuspendMutex);
     Json::Value resultJsonValue;
 
     const auto hdcDesktop = GetDC(nullptr);

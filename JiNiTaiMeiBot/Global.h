@@ -5,6 +5,7 @@
 
 #include <Windows.h>
 #include <string>
+#include <mutex>
 
 class Config;
 class Logger;
@@ -13,9 +14,30 @@ class OCREngine;
 extern Config*    GConfig;
 extern Logger*    GLogger;
 extern OCREngine* GOCREngine;
+extern std::mutex GSuspendMutex;
 
 extern HWND  GGtaHWnd;
 extern DWORD GGtaPid;
+
+
+class AutoLock
+{
+protected:
+    std::mutex* mLock;
+
+public:
+    AutoLock(std::mutex& lock)
+        : mLock{ &lock }
+    {
+        mLock->lock();
+    }
+
+    ~AutoLock()
+    {
+        mLock->unlock();
+    }
+};
+
 
 bool pressKeyboard(byte key);
 bool releaseKeyBoard(byte key);
