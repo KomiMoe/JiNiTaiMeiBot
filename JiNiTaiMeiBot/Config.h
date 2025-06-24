@@ -94,5 +94,7 @@ public:
     REG_STRING_VALUE(msgTeamFull, "满了", "满人时发的消息 (设置为空字符串则不发这条消息)");
     REG_STRING_VALUE(msgJobStarted, "开了，请等待下一辆车", "差事开始时发的消息 (设置为空字符串则不发这条消息)");
 
+    REG_INT_VALUE(jobTpBotIndex, -1, "差传bot的序号，-1: 不指定, 按顺序加入直到成功, 0: 第一个差传(一般为辅助瞄准), 1: 第二个差传(一般为自由瞄准); ");
+
     explicit Config(std::string& configFileName);
 };

@@ -513,7 +513,7 @@ void tryToJoinBot()
 
     const auto botLines = split(replaceAll(quellBotList, "\r", ""), "\n");
 
-    for (int i = 3; i < botLines.size(); ++i) {
+    for (int i = 3 + (GConfig->jobTpBotIndex >= 0 ? GConfig->jobTpBotIndex : 0); i < botLines.size(); GConfig->jobTpBotIndex < 0 ? ++i : 0) {
         const auto botJvp = botLines[i];
         if (botJvp.find("|") == std::string::npos) {
             continue;
@@ -538,6 +538,9 @@ void tryToJoinBot()
                 suspendProcess(GGtaPid, GConfig->suspendGTATime * 1000);
                 hasSuspended = true;
             }
+        }
+        if (GConfig->jobTpBotIndex >= 0) {
+            return;
         }
     }
 }
