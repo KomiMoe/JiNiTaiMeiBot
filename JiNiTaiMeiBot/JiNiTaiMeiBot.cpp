@@ -470,6 +470,8 @@ bool waitTeam(HWND hWnd)
         }
 
         if ((joinedCount == 3 && GConfig->startOnAllJoined) || (currentCheckTime - lastActiveTime > GConfig->startMatchDelay * 1000 && joinedCount > 0 && !joiningCount)) {
+            postMessageToSteamChat(GConfig->msgJobStarted);
+            Sleep(1000);
             clickKeyboard(VK_RETURN);
             Sleep(1000);
             if (!isOnJobPanel(hWnd)) {
@@ -477,7 +479,6 @@ bool waitTeam(HWND hWnd)
                 Sleep(1000);
                 continue;
             }
-            postMessageToSteamChat(GConfig->msgJobStarted);
             result = true;
             break;
         }
